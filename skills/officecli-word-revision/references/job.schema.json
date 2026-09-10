@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.codex/officecli-word-revision/job.schema.json",
+  "title": "OfficeCLI academic Word job",
+  "oneOf": [
+    {"$ref": "#/$defs/legacyManuscriptJob"},
+    {"$ref": "#/$defs/manuscriptJob"},
+    {"$ref": "#/$defs/thesisJob"}
+  ],
+  "$defs": {
+    "statistics": {
+      "type": "object",
+      "required": ["allow_execution", "consume_manifest_only"],
+      "properties": {
+        "allow_execution": {"const": false},
+        "consume_manifest_only": {"const": true}
+      },
+      "additionalProperties": true
+    },
+    "publicationLayout": {
+      "type": "object",
+      "description": "Opt-in generic journal figure/table policy. Explicit venue rules and user instructions take precedence.",
+      "properties": {
+        "mode": {"enum": ["generic_journal", "source_master", "explicit_venue"]},
+        "figure": {
+          "type": "object",
+          "properties": {
+            "max_width_ratio": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+            "caption_block_cm": {"type": "number", "exclusiveMinimum": 0},
+            "narrative_lines": {"type": "integer", "minimum": 1},
+            "narrative_line_cm": {"type": "number", "exclusiveMinimum": 0},
+            "min_label_pt_advisory": {"type": "number", "exclusiveMinimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "table": {
+          "type": "object",
+          "properties": {
+            "fit_mode": {"enum": ["content", "window", "fixed", "preserve"], "default": "content", "description": "Native Word AutoFit. Explicit venue widths take precedence; use fixed or preserve."},
+            "alignment_mode": {"enum": ["han-left-short-nonhan-right", "han-left-nonhan-right"]},
+            "prose_min_chars": {"type": "integer", "minimum": 0},
+            "prose_min_spaces": {"type": "integer", "minimum": 0},
+            "diagram_arrow_threshold": {"type": "integer", "minimum": 0},
+            "diagram_table_majority": {"type": "boolean"},
+            "small_font_max_pt": {"type": "number", "exclusiveMinimum": 0},
+            "small_line_spacing_pt": {"type": "number", "exclusiveMinimum": 0},
+            "large_line_spacing_pt": {"type": "number", "exclusiveMinimum": 0},
+            "cell_margin_twips": {"type": "integer", "minimum": 0},
+            "repeat_header": {"type": "boolean"},
+            "cant_split_rows": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        },
+        "pagination": {
+          "type": "object",
+          "properties": {
+            "require_narrative_on_object_pages": {"type": "boolean"},
+            "minimum_narrative_lines": {"type": "integer", "minimum": 0},
+            "minimum_narrative_characters": {"type": "integer", "minimum": 0},
+            "maximum_repair_cycles": {"type": "integer", "minimum": 0},
+            "object_scope": {
+              "description": "Optional active manuscript section for object-page QA; formatting still applies to all selected tables.",
+              "oneOf": [
+                {"type": "null"},
+                {
+                  "type": "object",
+                  "required": ["start_text", "end_text"],
+                  "properties": {
+                    "start_text": {"type": "string", "minLength": 1},
+                    "end_text": {"type": "string", "minLength": 1},
+                    "include_end_page": {"type": "boolean"}
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "commonV2": {
+      "type": "object",
+      "required": ["schema_version", "job_id", "scenario", "source", "run_dir", "cache_dir", "notebooklm", "statistics"],
+      "properties": {
+        "schema_version": {"const": "2.0"},
+        "job_id": {"type": "string", "minLength": 1},
+        "scenario": {"enum": ["manuscript_revision", "thesis_format"]},
+        "source": {"type": "string", "minLength": 1},
+        "run_dir": {"type": "string", "minLength": 1},
+        "cache_dir": {"type": "string", "minLength": 1},
+        "benchmark_dir": {"type": "string"},
+        "word_pdf_staging_dir": {"type": "string"},
+        "notebooklm": {"const": "disabled"},
+        "statistics": {"$ref": "#/$defs/statistics"},
+        "toolchain": {"type": "object"},
+        "audit": {"type": "object"},
+        "visual_qa": {
+          "type": "object",
+          "properties": {
+            "touched_pages": {
+              "description": "Additional 1-indexed PDF page numbers to include in the manual-review contact sheet.",
+              "type": "array",
+              "items": {"type": "integer", "minimum": 1}
+            },
+            "allowed_blank_pages": {
+              "description": "Intentional blank PDF pages, using 1-indexed page numbers.",
+              "type": "array",
+              "items": {"type": "integer", "minimum": 1}
+            }
+          },
+          "additionalProperties": true
+        },
+        "performance_thresholds": {"type": "object"}
+      }
+    },
+    "legacyManuscriptJob": {
+      "type": "object",
+      "required": ["schema_version", "job_id", "source", "content_source", "adapter", "run_dir", "cache_dir", "notebooklm", "statistics"],
+      "properties": {
+        "schema_version": {"const": "1.0"},
+        "scenario": {"type": "null"},
+        "job_id": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1},
+        "content_source": {"type": "string", "minLength": 1},
+        "adapter": {"type": "string", "minLength": 1},
+        "run_dir": {"type": "string", "minLength": 1},
+        "cache_dir": {"type": "string", "minLength": 1},
+        "notebooklm": {"const": "disabled"},
+        "statistics": {"$ref": "#/$defs/statistics"}
+      },
+      "additionalProperties": true
+    },
+    "manuscriptJob": {
+      "allOf": [
+        {"$ref": "#/$defs/commonV2"},
+        {
+          "type": "object",
+          "required": ["content_source", "adapter"],
+          "properties": {
+            "scenario": {"const": "manuscript_revision"},
+            "content_source": {"type": "string", "minLength": 1},
+            "adapter": {"type": "string", "minLength": 1},
+            "analysis_manifest": {"type": "string"},
+            "numeric_qa_script": {"type": "string"},
+            "revision_author": {"type": "string", "default": "Codex"},
+            "publication_layout": {"$ref": "#/$defs/publicationLayout"},
+            "format_contract": {
+              "type": "object",
+              "description": "Resolved, user-approved typography and object contract; mandatory final DOCX gate when supplied. Fonts are project-specific, not a universal thesis requirement.",
+              "required": ["body", "table", "caption", "expected_objects"],
+              "properties": {
+                "body": {"type": "object"},
+                "table": {"type": "object"},
+                "caption": {"type": "object"},
+                "expected_objects": {"type": "integer", "minimum": 1}
+              },
+              "additionalProperties": false
+            },
+            "citations": {"type": "array"}
+          }
+        }
+      ],
+      "unevaluatedProperties": true
+    },
+    "thesisJob": {
+      "allOf": [
+        {"$ref": "#/$defs/commonV2"},
+        {
+          "type": "object",
+          "required": ["scope", "profile", "output"],
+          "properties": {
+            "scenario": {"const": "thesis_format"},
+            "scope": {"enum": ["chapter", "chapter_batch", "full_thesis"]},
+            "sources": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+            "profile": {"type": "string", "minLength": 1},
+            "thesis_title": {"type": "string"},
+            "style_map": {"type": "object", "additionalProperties": {"type": "string"}},
+            "required_style_roles": {"type": "array", "items": {"type": "string"}},
+            "full_thesis_required_style_roles": {"type": "array", "items": {"type": "string"}},
+            "section_map": {"type": "object"},
+            "structure_policy": {"enum": ["validate_only", "explicit_anchors"], "default": "validate_only"},
+            "field_policy": {"enum": ["preserve", "repair", "create"], "default": "preserve"},
+            "field_operations": {"type": "array", "items": {"type": "object"}},
+            "table_policy": {"enum": ["report_only", "explicit", "all_body_tables"], "default": "report_only"},
+            "table_indices": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+            "output": {
+              "type": "object",
+              "required": ["tracked_formatting"],
+              "properties": {
+                "tracked_formatting": {"type": "boolean", "default": false},
+                "delivery_date": {"type": "string", "pattern": "^[0-9]{8}$"}
+              },
+              "additionalProperties": true
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": true
+    }
+  }
+}

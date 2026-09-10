@@ -1,0 +1,6 @@
+interface:
+  display_name: "OfficeCLI Academic Word"
+  short_description: "Journal revisions and doctoral thesis formatting"
+  default_prompt: "Use $officecli-word-revision to audit this academic DOCX, select the correct manuscript or thesis workflow, and deliver verified Word and PDF outputs."
+policy:
+  allow_implicit_invocation: true
