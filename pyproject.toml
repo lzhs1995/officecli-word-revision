@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "officecli-word-revision"
+dynamic = ["version"]
+description = "Development preview: OfficeCLI academic Word revision and thesis formatting skill"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "lzhs1995"}]
+dependencies = [
+  "python-docx>=1.1,<2", "lxml>=4.9,<7", "Pillow>=10,<13",
+  "pdfplumber>=0.11,<1", "jsonschema>=4.20,<5"
+]
+
+[project.scripts]
+wordrev = "officecli_word_revision:main"
+
+[project.urls]
+Repository = "https://github.com/lzhs1995/officecli-word-revision"
+Issues = "https://github.com/lzhs1995/officecli-word-revision/issues"
+
+[tool.setuptools]
+packages = ["officecli_word_revision"]
+package-dir = {officecli_word_revision = "skills/officecli-word-revision"}
+include-package-data = false
+
+[tool.setuptools.dynamic]
+version = {file = "skills/officecli-word-revision/VERSION"}
+
+[tool.setuptools.package-data]
+officecli_word_revision = [
+  "VERSION", "SKILL.md", "agents/*.yaml", "scripts/*.py",
+  "references/*.md", "references/*.json", "references/profiles/*.json"
+]

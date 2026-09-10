@@ -27,9 +27,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 
-RTK = shutil.which("rtk") or "/Users/lzhs/.local/bin/rtk"
-OFFICECLI = shutil.which("officecli") or "/Users/lzhs/.local/bin/officecli"
+RTK = shutil.which("rtk")
+OFFICECLI = os.environ.get("WORDREV_OFFICECLI") or shutil.which("officecli") or "officecli"
 SKILL_DIR = Path(__file__).resolve().parent.parent
+VERSION = (SKILL_DIR / "VERSION").read_text(encoding="utf-8").strip()
 THESIS_ADAPTER = SKILL_DIR / "scripts" / "thesis_format_adapter.py"
 PROFILE_DIR = SKILL_DIR / "references" / "profiles"
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -218,8 +219,9 @@ class Runner:
         merged_env = os.environ.copy()
         if env:
             merged_env.update(env)
+        launch_command = [RTK, "proxy", *command] if RTK else command
         process = subprocess.Popen(
-            [RTK, *command],
+            launch_command,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -254,7 +256,7 @@ class Runner:
             )
         elapsed = time.perf_counter() - started
         completed = subprocess.CompletedProcess(
-            [RTK, *command], process.returncode, stdout, stderr
+            launch_command, process.returncode, stdout, stderr
         )
         self.calls.append({
             "command": command,
@@ -946,7 +948,7 @@ class Pipeline:
         output.mkdir(exist_ok=True)
         python = self.job.get(
             "python",
-            "/Users/lzhs/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            sys.executable,
         )
         env = {
             "V71_MAIN_DOC": self.paths["accepted"],
@@ -1401,6 +1403,7 @@ def benchmark(job_path: Path, cold: int, warm: int) -> dict[str, Any]:
 
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(prog="wordrev")
+    root.add_argument("--version", action="version", version=f"wordrev {VERSION}")
     sub = root.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init")
     init.add_argument("--scenario", required=True, choices=("manuscript-revision", "thesis-format"))
