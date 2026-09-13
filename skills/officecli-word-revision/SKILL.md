@@ -43,6 +43,10 @@ For manuscripts without an explicit venue style guide, read [generic-journal-lay
 
 ## Guardrails
 
+### macOS Zotero/TCC recovery
+
+When Word shows Zotero controls but the controls do nothing, read [macos-tcc-zotero-word.md](references/macos-tcc-zotero-word.md). Full Disk Access and Automation (Apple Events) are separate permissions. Test the native Zotero route on a safe copy and preserve field-count evidence. If a targeted `tccutil reset AppleEvents` fails, use only backed-up per-user TCC recovery as a last resort; never delete TCC data automatically and never claim that a Terminal `-1743` probe alone diagnoses Zotero.
+
 - In `manuscript_revision`, treat the source DOCX as the only format master. In `thesis_format`, the selected versioned institution profile is the format authority while the source remains the content authority.
 - Serialize all Word, Zotero, and same-file OfficeCLI writes. Microsoft Word automation is protected by a cross-process lock; a lock timeout is a hard failure with owner/path/wait diagnostics, never permission to start a concurrent writer.
 - Word helper scripts must address the owned document explicitly and must not bring Word to the foreground with application-level `activate`. A timeout is recorded as return code 124 and terminates the launched process group before the phase fails.

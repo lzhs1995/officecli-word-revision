@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 2026-09-13
+
+- Document macOS Zotero→Word TCC recovery: distinguish Full Disk Access from Automation, keep Terminal `-1743` sender-specific, and describe backed-up per-user TCC database recovery only as a last resort.
+
 ## 0.1.0.dev1 — 2026-09-10
 
 - 首次将现有本地 Word skill、两场景、schema/profile、流水线及合成测试纳入独立 Git 仓库。

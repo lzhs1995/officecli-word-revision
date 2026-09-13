@@ -15,6 +15,8 @@ acceptance, a statistical audit, or a claim that all earlier defects are fixed.
 
 ## Before a stable native release
 
+- Reproduce the macOS Zotero→Word route after any TCC recovery on a disposable DOCX. Verify live `ZOTERO_ITEM` and `ZOTERO_BIBL` fields and observed Word Refresh completion; do not treat Full Disk Access or a Terminal `-1743` probe as sufficient.
+
 - Resolve/reproduce the `track revisions` / AutoFit `-10006` failure on a disposable
   document without closing unrelated Word documents.
 - Validate accepted/rejected native changes and all affected document stories.
