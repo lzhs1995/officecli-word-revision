@@ -38,14 +38,14 @@
   "header": {"font_east_asia": "SimSun", "font_latin": "Times New Roman", "size_pt": 10.5, "alignment": "center", "distance_cm": 2.5},
   "footer": {"font_latin": "Times New Roman", "size_pt": 10.5, "odd_alignment": "right", "even_alignment": "left", "distance_cm": 2.5},
   "page_numbering": {"front_matter": "lowerRoman", "body": "decimal", "body_start": 1},
-  "table": {"font_east_asia": "SimSun", "font_latin": "Times New Roman", "size_pt": 10.5, "three_line": true, "allow_row_split": false},
+  "table": {"font_east_asia": "SimSun", "font_latin": "Times New Roman", "size_pt": 10.5, "three_line": true, "allow_row_split": false, "firstLineIndent": "0pt", "hangingIndent": "0pt", "hanAlignment": "left", "mixedAlignment": "left", "latinDigitAlignment": "right"},
   "rules": [
     {"id": "RUC-PAGE-001", "area": "page", "summary": "A4 mirrored doctoral layout", "automation": "automatic"},
     {"id": "RUC-HF-001", "area": "header_footer", "summary": "Centered title header and outside page numbers", "automation": "automatic_with_title"},
     {"id": "RUC-NUM-001", "area": "page_numbering", "summary": "Roman front matter and decimal body", "automation": "explicit_anchors_only"},
     {"id": "RUC-STYLE-001", "area": "styles", "summary": "Body and heading typography", "automation": "explicit_style_map"},
     {"id": "RUC-FIELD-001", "area": "fields", "summary": "TOC, captions, lists, and cross-references", "automation": "explicit_anchors_only"},
-    {"id": "RUC-TABLE-001", "area": "tables", "summary": "Three-line tables without clipping", "automation": "explicit_or_opt_in"},
+    {"id": "RUC-TABLE-001", "area": "tables", "summary": "Three-line tables without clipping; zero first-line/hanging indent; Han or mixed left, Latin/digit/formula/date/interval right", "automation": "explicit_or_opt_in"},
     {"id": "RUC-CONTENT-001", "area": "content", "summary": "Semantic content and Zotero fields unchanged", "automation": "verification"}
   ]
 }

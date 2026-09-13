@@ -27,6 +27,16 @@ A successful recovery proves that rebuilding TCC resolved the local failure; it 
 
 After the user completed the per-user TCC rebuild and Word/Zotero controls were visible, a second agent-driven test used the R6 dissertation safe copy and the native Zotero ribbon. Selecting a manual parenthetical citation and invoking **Add/Edit Citation** produced Zotero's native "更新文件时遇到一个错误" dialog. The trial document was closed without saving; the on-disk copy remained `ZOTERO_ITEM=8`, `ZOTERO_BIBL=1`, with no `{Citation}` placeholder. This is a fresh Zotero-to-Word result, distinct from a Terminal `-1743` probe, and it keeps the real citation-conversion gate `INCOMPLETE` until a picker selection and saved field-count increase are independently verified.
 
+## Scriptable native route
+
+Use Word AppleScript `find object of selection` to select an exact author-year string before invoking Zotero. The correct Word VBA launcher syntax is `run VB macro macro name "ZoteroAddEditCitation"`; the shorter `run VB macro "..."` form is invalid. A successful AppleScript return, or an HTTP 200 response from Zotero's integration endpoint, is only a trigger. Keep Word open, observe the native Zotero dialog, save, close, reopen, and count live fields from OOXML. Do not use OOXML field fabrication or plain-text replacement.
+
+The 2026-09-14 R6 retry selected `Li et al., 2023` successfully and received `macro-ok`, but no completed Zotero picker/update was observed. The alternate native request produced Zotero's update-error dialog. The saved copy therefore remains incomplete (`ZOTERO_ITEM=11`, `ZOTERO_BIBL=1`, `ZOTERO_TEMP=0`, `{Citation}=0`).
+
+## Table alignment authority
+
+For the RUC doctoral profile, every table paragraph must have `firstLine=0` and `hanging=0`. Han or mixed text is left-aligned; content consisting only of Latin letters, digits, formulas, dates, or intervals is right-aligned, including headers. This explicit project rule supersedes historical opposite-direction reports.
+
 ## Acceptance after recovery
 
 On a safe copy, run Zotero Refresh and Add/Edit Bibliography, save, reopen, count live fields, export through Microsoft Word, and rerun content/NLM and RUC visual gates. Do not mark the thesis complete until post-insertion gates pass.
