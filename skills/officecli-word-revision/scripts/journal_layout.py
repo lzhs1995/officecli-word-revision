@@ -43,7 +43,9 @@ DEFAULT_PUBLICATION_LAYOUT: dict[str, Any] = {
     },
     "table": {
         "fit_mode": "content",
-        "alignment_mode": "han-left-short-nonhan-right",
+        # Dissertation table rule: Han text left; all non-Han content
+        # (including Latin letters and numbers) right. No prose exception.
+        "alignment_mode": "han-left-nonhan-right",
         "prose_min_chars": 25,
         "prose_min_spaces": 3,
         "diagram_arrow_threshold": 3,

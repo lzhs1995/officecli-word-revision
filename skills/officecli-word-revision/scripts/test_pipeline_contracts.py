@@ -116,7 +116,7 @@ class WordRevisionContractTests(unittest.TestCase):
             self.assertEqual(job["publication_layout"]["mode"], "generic_journal")
             self.assertEqual(
                 job["publication_layout"]["table"]["alignment_mode"],
-                "han-left-short-nonhan-right",
+                "han-left-nonhan-right",
             )
             self.assertTrue(
                 job["publication_layout"]["pagination"]["require_narrative_on_object_pages"]

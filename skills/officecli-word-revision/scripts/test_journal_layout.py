@@ -66,8 +66,8 @@ class JournalLayoutTests(unittest.TestCase):
         self.assertEqual(self.apply_report["checked_cells"], 11)
 
         document = Document(self.formatted)
-        # English prose stays left; formula and numeric strings stay right.
-        self.assertEqual(document.tables[0].cell(2, 0).paragraphs[0].alignment, WD_ALIGN_PARAGRAPH.LEFT)
+        # All non-Han content, including English prose, is right aligned.
+        self.assertEqual(document.tables[0].cell(2, 0).paragraphs[0].alignment, WD_ALIGN_PARAGRAPH.RIGHT)
         self.assertEqual(document.tables[0].cell(2, 1).paragraphs[0].alignment, WD_ALIGN_PARAGRAPH.RIGHT)
         self.assertEqual(document.tables[0].cell(1, 1).paragraphs[0].alignment, WD_ALIGN_PARAGRAPH.RIGHT)
         self.assertEqual(LAYOUT._xml_sha256(document.tables[1]._tbl), self.diagram_hash_before)
@@ -141,11 +141,11 @@ class JournalLayoutTests(unittest.TestCase):
         self.assertEqual(located, {7: [2]})
         self.assertEqual(missing, [])
 
-    def test_fixture_split_is_nine_left_two_right_contract(self) -> None:
+    def test_fixture_split_is_nine_right_two_right_contract(self) -> None:
         policy = LAYOUT.normalize_publication_layout_policy({})
         prose = ["Effect of X on Y through pathways other than M"] * 9
         controls = ["Counterfactual definition", "EYxm-Yxm*-Yx*m+Yx*m**Mx-Mx*"]
-        self.assertEqual(sum(LAYOUT.classify_cell_text(value, policy) == "left" for value in prose), 9)
+        self.assertEqual(sum(LAYOUT.classify_cell_text(value, policy) == "right" for value in prose), 9)
         self.assertEqual(sum(LAYOUT.classify_cell_text(value, policy) == "right" for value in controls), 2)
 
 

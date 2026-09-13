@@ -12,7 +12,7 @@ Use this fallback only when the journal or user has not supplied a conflicting f
 
 ## Data tables
 
-- Classify a visible cell as left aligned when it contains Han characters. Also keep an English prose sentence left aligned when it has at least 25 characters and three spaces. Align short English labels, formulas, letters, numbers, dates, intervals, and their punctuation to the right. Apply the same literal rule to headers.
+- Classify a visible cell as left aligned when it contains Han characters. For the dissertation default, align every non-Han cell, including English prose, labels, formulas, letters, numbers, dates, intervals, and their punctuation, to the right. Apply the same literal rule to headers.
 - Resolve empty-cell alignment from the majority semantic type of its real grid columns. Accumulate `gridSpan`; a cell's XML position is not necessarily its column number. Missing or tied column semantics are hard failures.
 - Set paragraph first-line, hanging, left, and right indents to zero in BOTH length and character units. Explicitly write character-unit zeros; removing them re-enables inherited indents. Put compact horizontal padding in `tcMar` (102 twip on each side).
 - Resolve effective table font size from direct runs, the paragraph style inheritance chain, then `docDefaults`. Use exact 12 pt spacing for effective sizes up to 10 pt and exact 14 pt above 10 pt; before/after spacing is zero.
@@ -26,7 +26,7 @@ A manuscript may use a table as a drawing canvas. When cells containing at least
 
 The final DOCX gate must first prove that its checked table/cell sets equal the target sets, then report zero violations. Mutation tests must demonstrate that wrong alignment, nonzero indentation, wrong line spacing, and an object-only page each fail. The final Word-rendered PDF still requires visual inspection for wrapping, clipping, overlap, excessive whitespace, and readable labels.
 
-An explicit user policy may choose `alignment_mode=han-left-nonhan-right`, which keeps every non-Han cell right-aligned, including long English text. Do not reintroduce the prose exception in that mode. Resolve empty cells from actual grid columns including merged spans.
+The dissertation default is `alignment_mode=han-left-nonhan-right`: every cell containing Han is left-aligned and every non-Han cell, including Latin letters, numbers, formulas, dates, intervals, and long English text, is right-aligned. Do not reintroduce a prose exception. Resolve empty cells from actual grid columns including merged spans.
 
 For uniform-font jobs, use `format_contract` and `manuscript_format.py`: specify script-specific fonts, point sizes and line spacing; do not hardcode a previous project's 9 pt or Arial. A false bold flag must remain false. Table/figure captions have a one-to-one object binding and must be above/below respectively. Verify both tracked accepted-view content and the Word-saved clean file, with all target cells covered. Source diagram geometry and school-specific thesis rules are not overridden by these manuscript settings.
 
