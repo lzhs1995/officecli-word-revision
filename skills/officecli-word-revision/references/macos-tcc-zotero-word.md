@@ -23,6 +23,10 @@ With Word and Zotero closed, move the user-level `TCC.db` to a dated backup/tras
 
 A successful recovery proves that rebuilding TCC resolved the local failure; it does not by itself prove database corruption or establish a universal fix for every Mac.
 
+## Fresh post-recovery evidence (2026-09-14)
+
+After the user completed the per-user TCC rebuild and Word/Zotero controls were visible, a second agent-driven test used the R6 dissertation safe copy and the native Zotero ribbon. Selecting a manual parenthetical citation and invoking **Add/Edit Citation** produced Zotero's native "更新文件时遇到一个错误" dialog. The trial document was closed without saving; the on-disk copy remained `ZOTERO_ITEM=8`, `ZOTERO_BIBL=1`, with no `{Citation}` placeholder. This is a fresh Zotero-to-Word result, distinct from a Terminal `-1743` probe, and it keeps the real citation-conversion gate `INCOMPLETE` until a picker selection and saved field-count increase are independently verified.
+
 ## Acceptance after recovery
 
 On a safe copy, run Zotero Refresh and Add/Edit Bibliography, save, reopen, count live fields, export through Microsoft Word, and rerun content/NLM and RUC visual gates. Do not mark the thesis complete until post-insertion gates pass.
