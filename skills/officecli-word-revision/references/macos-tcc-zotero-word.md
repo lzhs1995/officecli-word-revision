@@ -33,6 +33,10 @@ Use Word AppleScript `find object of selection` to select an exact author-year s
 
 The 2026-09-14 R6 retry selected `Li et al., 2023` successfully and received `macro-ok`, but no completed Zotero picker/update was observed. The alternate native request produced Zotero's update-error dialog. The saved copy therefore remains incomplete (`ZOTERO_ITEM=11`, `ZOTERO_BIBL=1`, `ZOTERO_TEMP=0`, `{Citation}=0`).
 
+## Verified bibliography creation after TCC rebuild (2026-09-14)
+
+On the subsequent R7 safe copy, the script-driven Word route removed the two static bibliography blocks, retained the heading, and ran `ZoteroAddEditBibliography` followed by `ZoteroRefresh`. Word save/close/reopen preserved a genuine `ZOTERO_BIBL` field: `real ITEM=11`, `real BIBL=1`, `TEMP=0`, no fake bibliography text, and no manual numbered references. The final Word PDF showed one visible bibliography. This proves the native bibliography-creation route is usable after the local TCC rebuild; it does not prove that every existing citation display is clean or that PDF/NLM/A5 acceptance is complete. Always verify the saved/reopened DOCX with a real-field auditor and inspect the Word PDF.
+
 ## Table alignment authority
 
 For the RUC doctoral profile, every table paragraph must have `firstLine=0` and `hanging=0`. Han or mixed text is left-aligned; content consisting only of Latin letters, digits, formulas, dates, or intervals is right-aligned, including headers. This explicit project rule supersedes historical opposite-direction reports.
