@@ -43,6 +43,8 @@ For manuscripts without an explicit venue style guide, read [generic-journal-lay
 
 ## Guardrails
 
+For theme fonts, native PDF glyph checks, inherited story indents, equation metadata and shared handoffs, read [rendering-and-handoff-evidence.md](references/rendering-and-handoff-evidence.md).
+
 ### macOS Zotero/TCC recovery
 
 When Word shows Zotero controls but the controls do nothing, read [macos-tcc-zotero-word.md](references/macos-tcc-zotero-word.md). Full Disk Access and Automation (Apple Events) are separate permissions. Test the native Zotero route on a safe copy and preserve field-count evidence. If a targeted `tccutil reset AppleEvents` fails, use only backed-up per-user TCC recovery as a last resort; never delete TCC data automatically and never claim that a Terminal `-1743` probe alone diagnoses Zotero.

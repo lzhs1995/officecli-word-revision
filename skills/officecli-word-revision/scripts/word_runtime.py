@@ -7,9 +7,57 @@ from contextlib import contextmanager
 from pathlib import Path
 
 
+def parse_document_probe(returncode, stdout, stderr, *, sender):
+    """Apple Events 被拒绝时保留 UNKNOWN，不能以 AX 零窗口代替文档数。"""
+    denied = "-1743" in stderr
+    documents = int(stdout.strip()) if returncode == 0 and stdout.strip().isdigit() else None
+    return {"sender": sender, "documents": documents, "documents_status": "KNOWN" if documents is not None else "UNKNOWN",
+            "error_code": -1743 if denied else returncode if returncode else None,
+            "raw_stdout": stdout, "raw_stderr": stderr,
+            "native_write_ready": documents == 0 and returncode == 0}
+
+
+def word_pending_path():
+    return Path.home() / '.cache/wordrev/word-automation.pending.json'
+
+
+def mark_word_pending(state):
+    target = word_pending_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_suffix('.tmp')
+    temporary.write_text(json.dumps(dict(pid=os.getpid(), at=time.time(), **state), indent=2))
+    temporary.replace(target)
+
+
+def clear_word_pending():
+    """Acknowledge an interrupted run only after Word is known to be idle."""
+    with word_lock('pending-recovery', _allow_pending=True):
+        return _clear_word_pending_locked()
+
+
+def _clear_word_pending_locked():
+    target = word_pending_path()
+    if not target.exists():
+        return None
+    import subprocess
+    if subprocess.run(["/usr/bin/pgrep", "-x", "Microsoft Word"],
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+        probe = subprocess.run(
+            ["/usr/bin/osascript", "-e",
+             'tell application "Microsoft Word" to get name of every document'],
+            capture_output=True, text=True, timeout=10,
+        )
+        if probe.returncode != 0 or probe.stdout.strip() not in ("", "missing value"):
+            raise RuntimeError("WORD_RECOVERY_REQUIRED: Word still has an open or unreadable document")
+    state = json.loads(target.read_text())
+    target.unlink()
+    return state
+
+
 @contextmanager
-def word_lock(owner: str, timeout: float = 60, path: Path | None = None):
+def word_lock(owner: str, timeout: float = 60, path: Path | None = None, *, _allow_pending=False):
     import fcntl
+    shared = path is None
     path = path or Path.home() / ".cache/wordrev/word-automation.lock"
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a+") as handle:
@@ -23,6 +71,8 @@ def word_lock(owner: str, timeout: float = 60, path: Path | None = None):
                     handle.seek(0)
                     raise TimeoutError(f"Word lock timeout; owner={handle.read()}; lock={path}")
                 time.sleep(.1)
+        if shared and not _allow_pending and word_pending_path().exists():
+            raise RuntimeError('WORD_RECOVERY_REQUIRED: ' + word_pending_path().read_text())
         handle.seek(0); handle.truncate()
         json.dump({"pid": os.getpid(), "owner": owner, "started": time.time()}, handle)
         handle.flush()

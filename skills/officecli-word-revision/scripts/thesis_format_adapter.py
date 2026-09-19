@@ -23,6 +23,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Inches, Mm, Pt
+from docx.text.paragraph import Paragraph
 from lxml import etree
 
 try:
@@ -41,7 +42,7 @@ SEMANTIC_INVARIANT_KEYS = (
     "footnote_text_sha256",
     "media_payload_sha256",
     "media_usage_sha256",
-    "equation_xml_sha256",
+    "equation_semantic_sha256",
     "tables",
     "equations",
     "drawings",
@@ -161,6 +162,10 @@ def _word_process_lock(lock_path: Path, timeout_seconds: float):
                     f"current PID: {owner_pid}"
                 )
 
+            if lock_path == _word_lock_path():
+                from word_runtime import word_pending_path
+                if word_pending_path().exists():
+                    raise RuntimeError("WORD_RECOVERY_REQUIRED: " + word_pending_path().read_text())
             lock_file.seek(0)
             lock_file.truncate()
             lock_file.write(json.dumps({
@@ -407,6 +412,19 @@ def augment_audit(job: dict, source: Path, output_dir: Path, results: dict) -> d
     }
 
 
+def _equation_projection(element):
+    """保留数学结构与 token；只忽略 Word 运行格式和无内容的分页缓存。"""
+    if element.tag in {qn("w:rPr"), "{http://schemas.openxmlformats.org/officeDocument/2006/math}ctrlPr"}:
+        return None
+    if element.tag == qn("w:lastRenderedPageBreak") and not len(element) and not (element.text or "").strip():
+        return None
+    children = [p for child in element if (p := _equation_projection(child)) is not None]
+    text = element.text or ""
+    if not text.strip() and element.tag != "{http://schemas.openxmlformats.org/officeDocument/2006/math}t":
+        text = ""
+    return [element.tag, sorted(element.attrib.items()), text, children]
+
+
 def _xml_semantic_snapshot(path: Path) -> dict[str, Any]:
     ns = {
         "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -476,6 +494,7 @@ def _xml_semantic_snapshot(path: Path) -> dict[str, Any]:
 
         media_usage: list[tuple[str, int, str]] = []
         equation_usage: list[tuple[str, int, str]] = []
+        equation_raw_usage = []
         for member in sorted(names):
             if not member.startswith("word/") or not member.endswith(".xml"):
                 continue
@@ -519,8 +538,10 @@ def _xml_semantic_snapshot(path: Path) -> dict[str, Any]:
                 canonical = etree.tostring(
                     omath, method="c14n", exclusive=False, with_comments=False
                 )
+                equation_raw_usage.append((member, index, hashlib.sha256(canonical).hexdigest()))
+                semantic = json.dumps(_equation_projection(omath), ensure_ascii=False, separators=(",", ":")).encode()
                 equation_usage.append(
-                    (member, index, hashlib.sha256(canonical).hexdigest())
+                    (member, index, hashlib.sha256(semantic).hexdigest())
                 )
 
         media_usage_sha256 = hashlib.sha256(
@@ -547,7 +568,10 @@ def _xml_semantic_snapshot(path: Path) -> dict[str, Any]:
             "footnote_text_sha256": hashlib.sha256(footnote_text.encode("utf-8")).hexdigest(),
             "media_payload_sha256": media_payload_sha256,
             "media_usage_sha256": media_usage_sha256,
-            "equation_xml_sha256": equation_xml_sha256,
+            "equation_xml_sha256": hashlib.sha256(json.dumps(equation_raw_usage, separators=(",", ":")).encode()).hexdigest(),
+            "equation_semantic_sha256": equation_xml_sha256,
+            "equation_raw_xml_sha256": hashlib.sha256(json.dumps(equation_raw_usage, separators=(",", ":")).encode()).hexdigest(),
+            "equation_projection_version": 3,
             "paragraph_text_length": len(paragraph_text),
             "tables": len(root.xpath(".//w:tbl", namespaces=ns)),
             "equations": len(root.xpath(".//m:oMath", namespaces=ns)),
@@ -573,12 +597,49 @@ def _set_rfonts(run, east_asia: str, latin: str) -> None:
     fonts.set(qn("w:eastAsia"), east_asia)
     fonts.set(qn("w:ascii"), latin)
     fonts.set(qn("w:hAnsi"), latin)
+    for attribute in ("asciiTheme", "hAnsiTheme", "eastAsiaTheme", "csTheme", "cstheme"):
+        fonts.attrib.pop(qn("w:" + attribute), None)
+
+
+def _zero_story_indents(paragraph):
+    """同时覆盖字符单位和长度单位，避免 Word 保存时恢复正文缩进。"""
+    ind = paragraph._p.get_or_add_pPr().get_or_add_ind()
+    for name in ("left", "right", "start", "end", "firstLine", "hanging",
+                 "leftChars", "rightChars", "startChars", "endChars", "firstLineChars", "hangingChars"):
+        ind.set(qn("w:" + name), "0")
+
+
+def stabilize_theme_fonts(document, *, east_asia, latin, east_asia_language=None):
+    """按格式契约稳定主题字体，使 Zotero 重新生成的主题 run 保持同一字体。"""
+    ns = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+    for relationship in document.part.rels.values():
+        if relationship.reltype.endswith("/theme"):
+            part = relationship.target_part
+            root = etree.fromstring(part.blob)
+            for family in root.xpath(".//a:fontScheme/a:majorFont | .//a:fontScheme/a:minorFont", namespaces=ns):
+                for tag, face in (("latin", latin), ("ea", east_asia)):
+                    node = family.find("a:" + tag, namespaces=ns)
+                    if node is not None:
+                        node.set("typeface", face)
+                for node in family.findall("a:font", namespaces=ns):
+                    if node.get("script") in {"Hans", "Hant"}:
+                        node.set("typeface", east_asia)
+            part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+    if east_asia_language:
+        # A Japanese template can resolve minorEastAsia through Jpan despite
+        # correct Hans/Hant faces. Change language only under an explicit profile.
+        lang = document.settings.element.find(qn("w:themeFontLang"))
+        if lang is None:
+            lang = OxmlElement("w:themeFontLang")
+            document.settings.element.append(lang)
+        lang.set(qn("w:eastAsia"), east_asia_language)
 
 
 def _replace_story_text(story, text: str, *, font_ea: str, font_latin: str, size: float, alignment) -> None:
     for paragraph in list(story.paragraphs):
         paragraph._element.getparent().remove(paragraph._element)
     paragraph = story.add_paragraph()
+    _zero_story_indents(paragraph)
     paragraph.alignment = alignment
     run = paragraph.add_run(text)
     run.font.name = font_latin
@@ -590,6 +651,7 @@ def _replace_footer_with_page(story, *, font_latin: str, size: float, alignment)
     for paragraph in list(story.paragraphs):
         paragraph._element.getparent().remove(paragraph._element)
     paragraph = story.add_paragraph()
+    _zero_story_indents(paragraph)
     paragraph.alignment = alignment
     run = paragraph.add_run()
     _set_rfonts(run, font_latin, font_latin)
@@ -655,15 +717,46 @@ def _format_three_line_table(table, profile: dict) -> None:
             bottom.set(qn("w:color"), "auto")
             borders.append(bottom)
     table_spec = profile["table"]
+    indent_keys = ("firstLineIndent", "hangingIndent")
+    zero_indents = any(key in table_spec for key in indent_keys)
+    if zero_indents and any(
+        not re.fullmatch(r"0(?:\.0+)?(?:pt|cm|mm|in)?", str(table_spec.get(key, "0pt")).strip())
+        for key in indent_keys
+    ):
+        raise ValueError("Selected-table indentation currently requires explicit zero values")
+    alignments = {"left": WD_ALIGN_PARAGRAPH.LEFT, "right": WD_ALIGN_PARAGRAPH.RIGHT,
+                  "center": WD_ALIGN_PARAGRAPH.CENTER, "both": WD_ALIGN_PARAGRAPH.JUSTIFY}
+    for key in ("hanAlignment", "mixedAlignment", "latinDigitAlignment"):
+        if key in table_spec and table_spec[key] not in alignments:
+            raise ValueError(f"Unsupported table alignment: {key}={table_spec[key]}")
     for row in table.rows:
         tr_pr = row._tr.get_or_add_trPr()
         if tr_pr.find(qn("w:cantSplit")) is None:
             tr_pr.append(OxmlElement("w:cantSplit"))
-        for cell in row.cells:
-            for paragraph in cell.paragraphs:
-                for run in paragraph.runs:
-                    run.font.size = Pt(table_spec["size_pt"])
-                    _set_rfonts(run, table_spec["font_east_asia"], table_spec["font_latin"])
+    # 遍历物理单元格，合并单元格不重复写；嵌套表格只改变段落格式，保留网格与合并结构。
+    han = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U000323af]")
+    hidden = {qn("w:del"), qn("w:moveFrom")}
+    for tc in table._tbl.iter(qn("w:tc")):
+        paragraphs = tc.findall(qn("w:p"))
+        value = "".join(node.text or "" for p in paragraphs for node in p.iter()
+                        if node.tag in {qn("w:t"), qn("m:t")}
+                        and not any(parent.tag in hidden for parent in node.iterancestors()))
+        key = None
+        if value.strip():
+            if han.search(value):
+                mixed = any(char.isalnum() and not han.fullmatch(char) for char in value)
+                key = "mixedAlignment" if mixed else "hanAlignment"
+            else:
+                key = "latinDigitAlignment"
+        for element in paragraphs:
+            paragraph = Paragraph(element, table)
+            if zero_indents:
+                _zero_story_indents(paragraph)
+            if key in table_spec:
+                paragraph.alignment = alignments[table_spec[key]]
+            for run in paragraph.runs:
+                run.font.size = Pt(table_spec["size_pt"])
+                _set_rfonts(run, table_spec["font_east_asia"], table_spec["font_latin"])
 
 
 def _apply_structural_formatting(path: Path, job: dict, profile: dict) -> list[str]:
@@ -674,6 +767,9 @@ def _apply_structural_formatting(path: Path, job: dict, profile: dict) -> list[s
 
     # Use the canonical profile property names consumed by OfficeCLI.
     page_props = profile.get("document_props", {})
+    if page_props.get("docDefaults.font.eastAsia") and page_props.get("docDefaults.font"):
+        stabilize_theme_fonts(document, east_asia=page_props["docDefaults.font.eastAsia"],
+                              latin=page_props["docDefaults.font"], east_asia_language=profile.get("theme_font_language"))
 
     def _parse_length(value: Any):
         """Parse an explicit OOXML-facing length; bare numbers mean cm."""
@@ -728,6 +824,11 @@ def _apply_structural_formatting(path: Path, job: dict, profile: dict) -> list[s
             _replace_story_text(section.even_page_header, title, font_ea=header["font_east_asia"], font_latin=header["font_latin"], size=header["size_pt"], alignment=WD_ALIGN_PARAGRAPH.CENTER)
             _replace_footer_with_page(section.footer, font_latin=footer["font_latin"], size=footer["size_pt"], alignment=WD_ALIGN_PARAGRAPH.RIGHT)
             _replace_footer_with_page(section.even_page_footer, font_latin=footer["font_latin"], size=footer["size_pt"], alignment=WD_ALIGN_PARAGRAPH.LEFT)
+            if section.different_first_page_header_footer:
+                # 首页面是否留白由原稿/格式契约决定；只消除继承的正文缩进。
+                for story in (section.first_page_header, section.first_page_footer):
+                    for paragraph in story.paragraphs:
+                        _zero_story_indents(paragraph)
     if job.get("scope") == "full_thesis":
         section_map = job.get("section_map", {})
         front = section_map.get("front_matter_section")
@@ -824,7 +925,9 @@ def build_layout(job: dict, paths: dict[str, str]) -> dict:
     after = _xml_semantic_snapshot(prepared)
     if before != after:
         changed = [key for key in before if before[key] != after.get(key)]
-        allowed = {"body_text_sha256", "paragraph_text_length"} if job.get("field_policy") != "preserve" else set()
+        allowed = ({"body_text_sha256", "paragraph_text_length"} if job.get("field_policy") != "preserve" else set())
+        if before.get("equation_semantic_sha256") == after.get("equation_semantic_sha256"):
+            allowed |= {"equation_xml_sha256", "equation_raw_xml_sha256"}
         unexpected = [key for key in changed if key not in allowed]
         if unexpected:
             raise RuntimeError(f"Thesis formatting changed semantic invariants: {unexpected}")
@@ -857,7 +960,7 @@ def restore_layout_sidecars(metadata: dict[str, Any], paths: dict[str, str]) -> 
 
 
 def _word_lock_path() -> Path:
-    return Path(tempfile.gettempdir()) / "officecli-word-revision" / "word-automation.lock"
+    return Path.home() / ".cache/wordrev/word-automation.lock"
 
 
 def _word_compare_script() -> str:
@@ -1287,6 +1390,15 @@ def verify_pdf(job: dict, paths: dict[str, str], pdf: Path, generic_pdf: dict) -
         "unexpected_blank_pages": unexpected_blank,
         "manual_review_required": ["first page", "first odd/even body pages", "TOC", "captions", "landscape pages", "footnotes", "references", "last page"],
     }
+    if job.get("rendered_document_qa"):
+        from rendered_document_qa import audit as audit_rendered
+        contract = job["rendered_document_qa"]
+        spec_path = Path(contract["path"])
+        if not spec_path.is_absolute() or sha256(spec_path) != contract["sha256"]:
+            raise ValueError("RENDERED_QA_CONTRACT_CHANGED")
+        rendered = audit_rendered(pdf, json.loads(spec_path.read_text()))
+        result["rendered_document_qa"] = rendered
+        result["all_pass"] = result["all_pass"] and rendered["status"] == "PASS"
     return result
 
 
@@ -1347,5 +1459,10 @@ def _export_pdf_unlocked(source: Path, output: Path, *, print_markup: bool = Fal
 
 
 def export_pdf(source: Path, output: Path, *, print_markup: bool = False) -> None:
-    with _word_process_lock(_word_lock_path(), WORD_LOCK_TIMEOUT_SECONDS):
-        _export_pdf_unlocked(source, output, print_markup=print_markup)
+    if print_markup:
+        raise ValueError("FINAL_PDF_MUST_HIDE_REVISIONS")
+    from word_pdf_service import export_pdf as export_owned
+    result = export_owned(source, output)
+    if not (result.get("success") is True and result.get("cleanup") == "PASS"
+            and result.get("input_unchanged") is True):
+        raise RuntimeError("WORD_PDF_INCOMPLETE: " + json.dumps(result, ensure_ascii=False))

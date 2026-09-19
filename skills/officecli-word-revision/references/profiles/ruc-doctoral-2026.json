@@ -1,6 +1,7 @@
 {
   "profile_id": "ruc-doctoral-2026",
   "profile_version": "1.0.0",
+  "theme_font_language": "zh-CN",
   "authority": "Locally supplied RUC doctoral-thesis formatting requirements, 2026 baseline",
   "source_files": [
     "/Users/lzhs/Documents/cnm/tasks/02_Word_review/verification/officecli-v1.0.144-full-ruc-20260820/inputs/中国人民大学研究生学位论文排版要求.md",

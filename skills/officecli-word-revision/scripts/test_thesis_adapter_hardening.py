@@ -389,19 +389,18 @@ class WordAutomationSafetyTest(unittest.TestCase):
         unlocked.assert_called_once()
 
     def test_pdf_production_entry_point_acquires_lock(self):
-        with patch.object(adapter, "_word_process_lock") as lock, patch.object(
-            adapter, "_export_pdf_unlocked"
-        ) as unlocked:
+        # The container service owns the shared lock, not a second nested lock.
+        with patch("word_pdf_service.export_pdf", return_value={"success": True, "cleanup": "PASS", "input_unchanged": True}) as service:
             adapter.export_pdf(Path("source.docx"), Path("output.pdf"), print_markup=False)
-        lock.assert_called_once_with(adapter._word_lock_path(), adapter.WORD_LOCK_TIMEOUT_SECONDS)
-        unlocked.assert_called_once_with(
-            Path("source.docx"), Path("output.pdf"), print_markup=False
-        )
+        service.assert_called_once_with(Path("source.docx"), Path("output.pdf"))
+        with patch("word_pdf_service.export_pdf", return_value={"success": True, "cleanup": "PENDING", "input_unchanged": True}):
+            with self.assertRaisesRegex(RuntimeError, "WORD_PDF_INCOMPLETE"):
+                adapter.export_pdf(Path("source.docx"), Path("output.pdf"))
 
 
 class FinalSemanticGateTest(unittest.TestCase):
     def test_new_payload_invariants_are_mandatory(self):
-        required = {"media_payload_sha256", "media_usage_sha256", "equation_xml_sha256"}
+        required = {"media_payload_sha256", "media_usage_sha256", "equation_semantic_sha256"}
         self.assertTrue(required.issubset(set(adapter.SEMANTIC_INVARIANT_KEYS)))
 
 
