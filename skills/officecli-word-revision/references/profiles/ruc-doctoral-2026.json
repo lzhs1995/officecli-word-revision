@@ -1,10 +1,10 @@
 {
   "profile_id": "ruc-doctoral-2026",
-  "profile_version": "1.0.0",
+  "profile_version": "1.1.0",
   "authority": "Locally supplied RUC doctoral-thesis formatting requirements, 2026 baseline",
   "source_files": [
-    "/Users/lzhs/Documents/cnm/tasks/02_Word_review/verification/officecli-v1.0.144-full-ruc-20260820/inputs/中国人民大学研究生学位论文排版要求.md",
-    "/Users/lzhs/Documents/cnm/tasks/02_Word_review/OfficeCLI-博士论文格式化-复盘与指南.md"
+    "User-supplied Chinese RUC requirements snapshot saved 2026-03-07; fingerprint in ruc-rule-sources.json",
+    "references/full-thesis-formatting.md"
   ],
   "document_props": {
     "pageWidth": "21cm",
@@ -26,26 +26,234 @@
   },
   "preserve_landscape_sections": true,
   "style_roles": {
-    "body": {"font.latin": "Times New Roman", "font.ea": "SimSun", "size": "12pt", "align": "both", "firstLineIndent": "24pt", "lineSpacing": "20pt", "lineRule": "exact", "spaceBefore": "0pt", "spaceAfter": "0pt"},
-    "chapter": {"font.latin": "Times New Roman", "font.ea": "SimHei", "size": "18pt", "bold": "true", "align": "center", "outlineLvl": "0", "lineSpacing": "20pt", "lineRule": "exact", "spaceBefore": "50pt", "spaceAfter": "80pt", "keepNext": "true", "pageBreakBefore": "true"},
-    "heading1": {"font.latin": "Times New Roman", "font.ea": "SimHei", "size": "14pt", "bold": "true", "align": "left", "outlineLvl": "1", "lineSpacing": "20pt", "lineRule": "exact", "spaceBefore": "50pt", "spaceAfter": "50pt", "keepNext": "true"},
-    "heading2": {"font.latin": "Times New Roman", "font.ea": "SimHei", "size": "12pt", "bold": "true", "align": "left", "outlineLvl": "2", "lineSpacing": "20pt", "lineRule": "exact", "spaceBefore": "20pt", "spaceAfter": "20pt", "keepNext": "true"},
-    "heading3": {"font.latin": "Times New Roman", "font.ea": "SimHei", "size": "12pt", "bold": "true", "align": "left", "outlineLvl": "3", "lineSpacing": "20pt", "lineRule": "exact", "spaceBefore": "20pt", "spaceAfter": "20pt", "keepNext": "true"},
-    "caption": {"font.latin": "Times New Roman", "font.ea": "SimSun", "size": "10.5pt", "align": "center", "firstLineIndent": "0pt", "lineSpacing": "20pt", "lineRule": "exact", "spaceBefore": "0pt", "spaceAfter": "0pt", "keepNext": "true"},
-    "footnote": {"font.latin": "Times New Roman", "font.ea": "SimSun", "size": "9pt"},
-    "bibliography": {"font.latin": "Times New Roman", "font.ea": "SimSun", "size": "12pt", "lineSpacing": "20pt", "lineRule": "exact"}
+    "body": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimSun",
+      "size": "12pt",
+      "align": "both",
+      "firstLineIndent": "24pt",
+      "lineSpacing": "20pt",
+      "lineRule": "exact",
+      "spaceBefore": "0pt",
+      "spaceAfter": "0pt"
+    },
+    "chapter": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimHei",
+      "size": "18pt",
+      "bold": "true",
+      "align": "center",
+      "outlineLvl": "0",
+      "lineSpacing": "20pt",
+      "lineRule": "exact",
+      "spaceBefore": "50pt",
+      "spaceAfter": "80pt",
+      "keepNext": "true",
+      "pageBreakBefore": "true"
+    },
+    "heading1": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimHei",
+      "size": "14pt",
+      "bold": "true",
+      "align": "left",
+      "outlineLvl": "1",
+      "lineSpacing": "20pt",
+      "lineRule": "exact",
+      "spaceBefore": "50pt",
+      "spaceAfter": "50pt",
+      "keepNext": "true"
+    },
+    "heading2": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimHei",
+      "size": "12pt",
+      "bold": "true",
+      "align": "left",
+      "outlineLvl": "2",
+      "lineSpacing": "20pt",
+      "lineRule": "exact",
+      "spaceBefore": "20pt",
+      "spaceAfter": "20pt",
+      "keepNext": "true"
+    },
+    "heading3": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimSun",
+      "size": "12pt",
+      "bold": "false",
+      "align": "left",
+      "outlineLvl": "3",
+      "lineSpacing": "20pt",
+      "lineRule": "exact",
+      "spaceBefore": "20pt",
+      "spaceAfter": "20pt",
+      "keepNext": "true"
+    },
+    "caption": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimSun",
+      "size": "10.5pt",
+      "align": "center",
+      "firstLineIndent": "0pt",
+      "lineSpacing": "20pt",
+      "lineRule": "exact",
+      "spaceBefore": "0pt",
+      "spaceAfter": "0pt"
+    },
+    "footnote": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimSun",
+      "size": "9pt"
+    },
+    "bibliography": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimSun",
+      "size": "12pt",
+      "lineSpacing": "20pt",
+      "lineRule": "exact"
+    },
+    "table_caption": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimSun",
+      "size": "10.5pt",
+      "align": "center",
+      "firstLineIndent": "0pt",
+      "lineSpacing": "20pt",
+      "lineRule": "exact",
+      "spaceBefore": "0pt",
+      "spaceAfter": "0pt",
+      "keepNext": "true"
+    },
+    "figure_caption": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimSun",
+      "size": "10.5pt",
+      "align": "center",
+      "firstLineIndent": "0pt",
+      "lineSpacing": "20pt",
+      "lineRule": "exact",
+      "spaceBefore": "0pt",
+      "spaceAfter": "0pt",
+      "keepNext": "false"
+    },
+    "toc_title": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimHei",
+      "size": "16pt",
+      "align": "center",
+      "firstLineIndent": "0pt",
+      "lineSpacing": "20pt",
+      "lineRule": "exact",
+      "keepNext": "true"
+    },
+    "toc1": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimHei",
+      "size": "14pt"
+    },
+    "toc2": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimSun",
+      "size": "12pt"
+    },
+    "toc3": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimSun",
+      "size": "12pt"
+    },
+    "backmatter_title": {
+      "font.latin": "Times New Roman",
+      "font.ea": "SimHei",
+      "size": "12pt",
+      "lineSpacing": "20pt",
+      "lineRule": "exact",
+      "keepNext": "true",
+      "pageBreakBefore": "true"
+    }
   },
-  "header": {"font_east_asia": "SimSun", "font_latin": "Times New Roman", "size_pt": 10.5, "alignment": "center", "distance_cm": 2.5},
-  "footer": {"font_latin": "Times New Roman", "size_pt": 10.5, "odd_alignment": "right", "even_alignment": "left", "distance_cm": 2.5},
-  "page_numbering": {"front_matter": "lowerRoman", "body": "decimal", "body_start": 1},
-  "table": {"font_east_asia": "SimSun", "font_latin": "Times New Roman", "size_pt": 10.5, "three_line": true, "allow_row_split": false, "firstLineIndent": "0pt", "hangingIndent": "0pt", "hanAlignment": "left", "mixedAlignment": "left", "latinDigitAlignment": "right"},
+  "header": {
+    "font_east_asia": "SimSun",
+    "font_latin": "Times New Roman",
+    "size_pt": 10.5,
+    "alignment": "center",
+    "distance_cm": 2.5
+  },
+  "footer": {
+    "font_latin": "Times New Roman",
+    "size_pt": 10.5,
+    "odd_alignment": "right",
+    "even_alignment": "left",
+    "distance_cm": 2.5
+  },
+  "page_numbering": {
+    "front_matter": "lowerRoman",
+    "body": "decimal",
+    "body_start": 1
+  },
+  "table": {
+    "font_east_asia": "SimSun",
+    "font_latin": "Times New Roman",
+    "size_pt": 10.5,
+    "three_line": true,
+    "allow_row_split": false,
+    "firstLineIndent": "0pt",
+    "hangingIndent": "0pt",
+    "hanAlignment": "left",
+    "mixedAlignment": "left",
+    "latinDigitAlignment": "right",
+    "header_bold": false
+  },
   "rules": [
-    {"id": "RUC-PAGE-001", "area": "page", "summary": "A4 mirrored doctoral layout", "automation": "automatic"},
-    {"id": "RUC-HF-001", "area": "header_footer", "summary": "Centered title header and outside page numbers", "automation": "automatic_with_title"},
-    {"id": "RUC-NUM-001", "area": "page_numbering", "summary": "Roman front matter and decimal body", "automation": "explicit_anchors_only"},
-    {"id": "RUC-STYLE-001", "area": "styles", "summary": "Body and heading typography", "automation": "explicit_style_map"},
-    {"id": "RUC-FIELD-001", "area": "fields", "summary": "TOC, captions, lists, and cross-references", "automation": "explicit_anchors_only"},
-    {"id": "RUC-TABLE-001", "area": "tables", "summary": "Three-line tables without clipping; zero first-line/hanging indent; Han or mixed left, Latin/digit/formula/date/interval right", "automation": "explicit_or_opt_in"},
-    {"id": "RUC-CONTENT-001", "area": "content", "summary": "Semantic content and Zotero fields unchanged", "automation": "verification"}
-  ]
+    {
+      "id": "RUC-PAGE-001",
+      "area": "page",
+      "summary": "A4 mirrored doctoral layout",
+      "automation": "automatic"
+    },
+    {
+      "id": "RUC-HF-001",
+      "area": "header_footer",
+      "summary": "Centered title header and outside page numbers",
+      "automation": "automatic_with_title"
+    },
+    {
+      "id": "RUC-NUM-001",
+      "area": "page_numbering",
+      "summary": "Roman front matter and decimal body",
+      "automation": "explicit_anchors_only"
+    },
+    {
+      "id": "RUC-STYLE-001",
+      "area": "styles",
+      "summary": "Body and heading typography",
+      "automation": "explicit_style_map"
+    },
+    {
+      "id": "RUC-FIELD-001",
+      "area": "fields",
+      "summary": "TOC, captions, lists, and cross-references",
+      "automation": "explicit_anchors_only"
+    },
+    {
+      "id": "RUC-TABLE-001",
+      "area": "tables",
+      "summary": "Three-line tables without clipping; zero first-line/hanging indent; Han or mixed left, Latin/digit/formula/date/interval right",
+      "automation": "explicit_or_opt_in"
+    },
+    {
+      "id": "RUC-CONTENT-001",
+      "area": "content",
+      "summary": "Semantic content and Zotero fields unchanged",
+      "automation": "verification"
+    }
+  ],
+  "theme_font_language": "zh-CN",
+  "provenance": {
+    "institution_snapshot": "User-supplied 2026-03-07 snapshot; not claimed as latest official publication",
+    "rule_matrix": "ruc-rule-sources.json",
+    "front_matter_roman_case": "lowerRoman is a compatibility default, not an independently verified university requirement",
+    "heading_spacing": "Compatibility translation of before/after line values at 20pt; occupied-line totals are unresolved, not an independently verified aggregate height",
+    "table_alignment": "User preference; see source matrix"
+  }
 }

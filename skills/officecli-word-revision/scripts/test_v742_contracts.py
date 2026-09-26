@@ -37,10 +37,14 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaises(RuntimeError): analysis_artifacts({'artifacts':[self.item]},self.root)
 
     def test_locked_owner_cannot_be_overwritten(self):
+        from concurrent.futures import ThreadPoolExecutor
         path=self.root/'word.lock'
+        def contender():
+            with word_lock('second',timeout=.05,path=path): pass
         with word_lock('first',path=path):
-            with self.assertRaises(TimeoutError):
-                with word_lock('second',timeout=.05,path=path): pass
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                with self.assertRaises(TimeoutError):
+                    pool.submit(contender).result(timeout=2)
             self.assertIn('first',path.read_text())
 
     def test_failed_export_retains_owned_staging_for_recovery(self):

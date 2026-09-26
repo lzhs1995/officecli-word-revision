@@ -112,6 +112,7 @@
           },
           "additionalProperties": true
         },
+        "rendered_document_qa": {"type": "object", "required": ["path", "sha256"], "additionalProperties": false, "properties": {"path": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}},
         "performance_thresholds": {"type": "object"}
       }
     },
@@ -185,6 +186,7 @@
             "field_operations": {"type": "array", "items": {"type": "object"}},
             "table_policy": {"enum": ["report_only", "explicit", "all_body_tables"], "default": "report_only"},
             "table_indices": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+            "thesis_integrity": {"type": "object", "required": ["path", "sha256"], "additionalProperties": false, "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}},
             "output": {
               "type": "object",
               "required": ["tracked_formatting"],

@@ -18,5 +18,21 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install .
       - run: wordrev --version
+      - name: Installed package resources and synthetic positive/negative CLI
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess, sys, tempfile
+          import officecli_word_revision
+          root = Path(officecli_word_revision.__file__).parent
+          for name in ("full-thesis-formatting.md", "electronic-appendices.md", "ruc-rule-sources.json", "thesis-integrity.schema.json"):
+              assert (root / "references" / name).is_file(), name
+          with tempfile.TemporaryDirectory() as directory:
+              for case in ("valid", "missing-reference", "appendix-restart", "bibliography-order", "clipped-image"):
+                  out = Path(directory) / case
+                  subprocess.run([sys.executable, str(root / "scripts/make_thesis_fixture.py"), "--out-dir", str(out), "--case", case], check=True, cwd=directory)
+                  result = subprocess.run([sys.executable, str(root / "scripts/thesis_integrity.py"), "--docx", str(out / "synthetic-thesis.docx"), "--contract", str(out / "contract.json"), "--output", str(out / "check.json")], cwd=directory)
+                  assert result.returncode == (0 if case == "valid" else 2), case
+          PY
       - run: python -m unittest discover -s skills/officecli-word-revision/scripts -p 'test_*.py' -v
       - run: python -m pip wheel . --no-deps --wheel-dir dist
