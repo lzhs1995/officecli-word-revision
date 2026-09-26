@@ -1,4 +1,5 @@
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -67,9 +68,16 @@ class RenderingTests(unittest.TestCase):
             path = a._word_lock_path()
             self.assertEqual(path, word_runtime.word_pending_path().parent / 'word-automation.lock')
             with word_runtime.word_lock('fixture', timeout=1):
-                with self.assertRaises(TimeoutError):
+                # Adapter and service are one owner when nested in this thread.
+                with a._word_process_lock(path, 0.05):
+                    pass
+                def independent_owner():
                     with a._word_process_lock(path, 0.05):
-                        self.fail('two independent Word owners entered')
+                        return 'entered'
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(independent_owner)
+                    with self.assertRaises(TimeoutError):
+                        future.result(timeout=2)
             pending = word_runtime.word_pending_path()
             pending.write_text('{"phase":"uncertain"}')
             with self.assertRaisesRegex(RuntimeError, 'WORD_RECOVERY_REQUIRED'):

@@ -3,7 +3,7 @@
 Independent academic Word skill and executable pipeline. Skill name:
 `officecli-word-revision`; CLI: `wordrev`.
 
-**开发预览 `0.1.0.dev2`。** 本版加入全文统稿经验、规则来源矩阵、可选的整稿检查契约及
+**开发预览 `0.1.0.dev3`。** 本版加入全文统稿经验、规则来源矩阵、可选的整稿检查契约及
 可生成的合成正反例。软件版本、作业 schema 2.0、RUC profile 1.1.0、整稿契约1.0分别管理。
 自动检查只证明其声明的范围；原生分页、Zotero Refresh、视觉和内容审读分别验收。
 
