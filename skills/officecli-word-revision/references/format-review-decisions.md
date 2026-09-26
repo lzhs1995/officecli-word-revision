@@ -56,4 +56,4 @@
 - 含用户选择的最终作者裁决：`edcb3471512f2ce0c693932167d009c30f79750472766c238b59d72e95384bec`。
 - Word合成v3作者验收：`d3b451829ee33c775da0c84cffbeb4f13e3f62ad426f82f6f9f7a60dac270770`。
 
-原生v3验证声明的合成脚注、目录、书目段落与导出机制；153项测试、NLM解释审议、作者裁决及完整论文/原生Zotero验收互不替代。见[发布说明](../../../docs/release.md)、[全文统稿指南](full-thesis-formatting.md)和[来源矩阵](ruc-rule-sources.json)。
+原生v3验证声明的合成脚注、目录、书目段落与导出机制；153项测试、NLM解释审议、作者裁决及完整论文/原生Zotero验收互不替代。见[发布说明](https://github.com/lzhs1995/officecli-word-revision/blob/main/docs/release.md)、[全文统稿指南](full-thesis-formatting.md)和[来源矩阵](ruc-rule-sources.json)。
