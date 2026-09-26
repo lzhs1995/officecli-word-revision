@@ -23,6 +23,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Inches, Mm, Pt
+from docx.text.paragraph import Paragraph
 from lxml import etree
 
 try:
@@ -41,7 +42,7 @@ SEMANTIC_INVARIANT_KEYS = (
     "footnote_text_sha256",
     "media_payload_sha256",
     "media_usage_sha256",
-    "equation_xml_sha256",
+    "equation_semantic_sha256",
     "tables",
     "equations",
     "drawings",
@@ -51,7 +52,11 @@ SEMANTIC_INVARIANT_KEYS = (
 
 
 def dependency_paths():
-    return sorted(PROFILE_DIR.glob("*.json"))
+    return [*sorted(PROFILE_DIR.glob("*.json")),
+            SKILL_DIR / "references/thesis-integrity.schema.json",
+            *[SKILL_DIR / "scripts" / name for name in (
+                "thesis_integrity.py", "manuscript_format.py", "rendered_document_qa.py",
+                "word_pdf_service.py", "word_runtime.py")]]
 
 
 def bind_runner(runner) -> None:
@@ -114,108 +119,10 @@ def _disable_automatic_field_refresh(path: Path) -> None:
 
 @contextmanager
 def _word_process_lock(lock_path: Path, timeout_seconds: float):
-    """Cross-process file lock for Microsoft Word automation.
-
-    Uses fcntl.flock on macOS/Linux or falls back to polling-based lock file
-    when fcntl is unavailable. Includes owner PID, path, and wait diagnostics
-    in timeout errors.
-    """
-    if isinstance(timeout_seconds, bool) or timeout_seconds <= 0:
-        raise ValueError("timeout_seconds must be positive")
-    lock_path.parent.mkdir(parents=True, exist_ok=True)
-    owner_pid = os.getpid()
-    acquired = False
-    start_time = time.monotonic()
-
-    if HAS_FCNTL:
-        # fcntl-based lock for POSIX systems
-        lock_file = None
-        try:
-            # The path is deliberately persistent. Opening with "w" before
-            # flock would let a waiter truncate the current owner's metadata;
-            # unlinking after unlock would let contenders lock different
-            # inodes. Both break process-wide mutual exclusion.
-            lock_file = lock_path.open("a+", encoding="utf-8")
-            deadline = start_time + timeout_seconds
-            while True:
-                try:
-                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    acquired = True
-                    break
-                except (IOError, OSError):
-                    if time.monotonic() >= deadline:
-                        break
-                    time.sleep(0.1)
-
-            if not acquired:
-                waited = time.monotonic() - start_time
-                existing_owner = "unknown"
-                try:
-                    lock_file.seek(0)
-                    existing_owner = lock_file.read().strip() or "unknown"
-                except Exception:
-                    pass
-                raise TimeoutError(
-                    f"Failed to acquire Word lock after {waited:.1f}s. "
-                    f"Lock path: {lock_path}, existing owner: {existing_owner}, "
-                    f"current PID: {owner_pid}"
-                )
-
-            lock_file.seek(0)
-            lock_file.truncate()
-            lock_file.write(json.dumps({
-                "pid": owner_pid,
-                "path": str(lock_path),
-                "acquired_at_epoch": time.time(),
-            }, sort_keys=True))
-            lock_file.flush()
-            os.fsync(lock_file.fileno())
-            yield
-        finally:
-            if lock_file is not None:
-                if acquired:
-                    try:
-                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-                    except Exception:
-                        pass
-                lock_file.close()
-    else:
-        # Fallback polling-based lock for Windows
-        try:
-            deadline = start_time + timeout_seconds
-            while True:
-                try:
-                    with lock_path.open("x", encoding="utf-8") as handle:
-                        handle.write(json.dumps({
-                            "pid": owner_pid,
-                            "path": str(lock_path),
-                            "acquired_at_epoch": time.time(),
-                        }, sort_keys=True))
-                    acquired = True
-                    break
-                except FileExistsError:
-                    if time.monotonic() >= deadline:
-                        break
-                    time.sleep(0.1)
-
-            if not acquired:
-                waited = time.monotonic() - start_time
-                existing_owner = "unknown"
-                try:
-                    with open(lock_path, "r") as f:
-                        existing_owner = f.read().strip()
-                except Exception:
-                    pass
-                raise TimeoutError(
-                    f"Failed to acquire Word lock after {waited:.1f}s. "
-                    f"Lock path: {lock_path}, existing owner: {existing_owner}, "
-                    f"current PID: {owner_pid}"
-                )
-
-            yield
-        finally:
-            if acquired:
-                lock_path.unlink(missing_ok=True)
+    """Use the same persistent POSIX lock as Runner and the PDF service."""
+    from word_runtime import word_lock
+    with word_lock("thesis-adapter", timeout=timeout_seconds, path=lock_path):
+        yield
 
 
 def prepare_word_staging(path: Path, *, purpose: str) -> None:
@@ -407,6 +314,23 @@ def augment_audit(job: dict, source: Path, output_dir: Path, results: dict) -> d
     }
 
 
+def _equation_projection(element):
+    """保留数学结构/token及粗斜体等语义格式；忽略明确的字号/字体元数据。"""
+    formatting = {qn("w:" + name) for name in ("rFonts", "sz", "szCs", "lang", "kern", "noProof")}
+    if element.tag in formatting and element.getparent() is not None and element.getparent().tag == qn("w:rPr"):
+        return None
+    if element.tag == qn("w:lastRenderedPageBreak") and not len(element) and not (element.text or "").strip():
+        return None
+    children = [p for child in element if (p := _equation_projection(child)) is not None]
+    if (element.tag in {qn("w:rPr"), "{http://schemas.openxmlformats.org/officeDocument/2006/math}ctrlPr"}
+            and not children and not element.attrib and not (element.text or "").strip()):
+        return None
+    text = element.text or ""
+    if not text.strip() and element.tag != "{http://schemas.openxmlformats.org/officeDocument/2006/math}t":
+        text = ""
+    return [element.tag, sorted(element.attrib.items()), text, children]
+
+
 def _xml_semantic_snapshot(path: Path) -> dict[str, Any]:
     ns = {
         "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -476,6 +400,7 @@ def _xml_semantic_snapshot(path: Path) -> dict[str, Any]:
 
         media_usage: list[tuple[str, int, str]] = []
         equation_usage: list[tuple[str, int, str]] = []
+        equation_raw_usage = []
         for member in sorted(names):
             if not member.startswith("word/") or not member.endswith(".xml"):
                 continue
@@ -519,8 +444,10 @@ def _xml_semantic_snapshot(path: Path) -> dict[str, Any]:
                 canonical = etree.tostring(
                     omath, method="c14n", exclusive=False, with_comments=False
                 )
+                equation_raw_usage.append((member, index, hashlib.sha256(canonical).hexdigest()))
+                semantic = json.dumps(_equation_projection(omath), ensure_ascii=False, separators=(",", ":")).encode()
                 equation_usage.append(
-                    (member, index, hashlib.sha256(canonical).hexdigest())
+                    (member, index, hashlib.sha256(semantic).hexdigest())
                 )
 
         media_usage_sha256 = hashlib.sha256(
@@ -547,7 +474,10 @@ def _xml_semantic_snapshot(path: Path) -> dict[str, Any]:
             "footnote_text_sha256": hashlib.sha256(footnote_text.encode("utf-8")).hexdigest(),
             "media_payload_sha256": media_payload_sha256,
             "media_usage_sha256": media_usage_sha256,
-            "equation_xml_sha256": equation_xml_sha256,
+            "equation_xml_sha256": hashlib.sha256(json.dumps(equation_raw_usage, separators=(",", ":")).encode()).hexdigest(),
+            "equation_semantic_sha256": equation_xml_sha256,
+            "equation_raw_xml_sha256": hashlib.sha256(json.dumps(equation_raw_usage, separators=(",", ":")).encode()).hexdigest(),
+            "equation_projection_version": 4,
             "paragraph_text_length": len(paragraph_text),
             "tables": len(root.xpath(".//w:tbl", namespaces=ns)),
             "equations": len(root.xpath(".//m:oMath", namespaces=ns)),
@@ -573,12 +503,49 @@ def _set_rfonts(run, east_asia: str, latin: str) -> None:
     fonts.set(qn("w:eastAsia"), east_asia)
     fonts.set(qn("w:ascii"), latin)
     fonts.set(qn("w:hAnsi"), latin)
+    for attribute in ("asciiTheme", "hAnsiTheme", "eastAsiaTheme", "csTheme", "cstheme"):
+        fonts.attrib.pop(qn("w:" + attribute), None)
+
+
+def _zero_story_indents(paragraph):
+    """同时覆盖字符单位和长度单位，避免 Word 保存时恢复正文缩进。"""
+    ind = paragraph._p.get_or_add_pPr().get_or_add_ind()
+    for name in ("left", "right", "start", "end", "firstLine", "hanging",
+                 "leftChars", "rightChars", "startChars", "endChars", "firstLineChars", "hangingChars"):
+        ind.set(qn("w:" + name), "0")
+
+
+def stabilize_theme_fonts(document, *, east_asia, latin, east_asia_language=None):
+    """按格式契约稳定主题字体，使 Zotero 重新生成的主题 run 保持同一字体。"""
+    ns = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+    for relationship in document.part.rels.values():
+        if relationship.reltype.endswith("/theme"):
+            part = relationship.target_part
+            root = etree.fromstring(part.blob)
+            for family in root.xpath(".//a:fontScheme/a:majorFont | .//a:fontScheme/a:minorFont", namespaces=ns):
+                for tag, face in (("latin", latin), ("ea", east_asia)):
+                    node = family.find("a:" + tag, namespaces=ns)
+                    if node is not None:
+                        node.set("typeface", face)
+                for node in family.findall("a:font", namespaces=ns):
+                    if node.get("script") in {"Hans", "Hant"}:
+                        node.set("typeface", east_asia)
+            part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+    if east_asia_language:
+        # A Japanese template can resolve minorEastAsia through Jpan despite
+        # correct Hans/Hant faces. Change language only under an explicit profile.
+        lang = document.settings.element.find(qn("w:themeFontLang"))
+        if lang is None:
+            lang = OxmlElement("w:themeFontLang")
+            document.settings.element.append(lang)
+        lang.set(qn("w:eastAsia"), east_asia_language)
 
 
 def _replace_story_text(story, text: str, *, font_ea: str, font_latin: str, size: float, alignment) -> None:
     for paragraph in list(story.paragraphs):
         paragraph._element.getparent().remove(paragraph._element)
     paragraph = story.add_paragraph()
+    _zero_story_indents(paragraph)
     paragraph.alignment = alignment
     run = paragraph.add_run(text)
     run.font.name = font_latin
@@ -590,6 +557,7 @@ def _replace_footer_with_page(story, *, font_latin: str, size: float, alignment)
     for paragraph in list(story.paragraphs):
         paragraph._element.getparent().remove(paragraph._element)
     paragraph = story.add_paragraph()
+    _zero_story_indents(paragraph)
     paragraph.alignment = alignment
     run = paragraph.add_run()
     _set_rfonts(run, font_latin, font_latin)
@@ -655,15 +623,57 @@ def _format_three_line_table(table, profile: dict) -> None:
             bottom.set(qn("w:color"), "auto")
             borders.append(bottom)
     table_spec = profile["table"]
-    for row in table.rows:
+    indent_keys = ("firstLineIndent", "hangingIndent")
+    zero_indents = any(key in table_spec for key in indent_keys)
+    if zero_indents and any(
+        not re.fullmatch(r"0(?:\.0+)?(?:pt|cm|mm|in)?", str(table_spec.get(key, "0pt")).strip())
+        for key in indent_keys
+    ):
+        raise ValueError("Selected-table indentation currently requires explicit zero values")
+    alignments = {"left": WD_ALIGN_PARAGRAPH.LEFT, "right": WD_ALIGN_PARAGRAPH.RIGHT,
+                  "center": WD_ALIGN_PARAGRAPH.CENTER, "both": WD_ALIGN_PARAGRAPH.JUSTIFY}
+    for key in ("hanAlignment", "mixedAlignment", "latinDigitAlignment"):
+        if key in table_spec and table_spec[key] not in alignments:
+            raise ValueError(f"Unsupported table alignment: {key}={table_spec[key]}")
+    for row_index, row in enumerate(table.rows):
         tr_pr = row._tr.get_or_add_trPr()
-        if tr_pr.find(qn("w:cantSplit")) is None:
+        height = tr_pr.find(qn("w:trHeight"))
+        if height is not None and height.get(qn("w:hRule")) == "exact":
+            height.set(qn("w:hRule"), "atLeast")
+        if table_spec.get("allow_row_split", False):
+            for split in list(tr_pr.findall(qn("w:cantSplit"))):
+                tr_pr.remove(split)
+        elif tr_pr.find(qn("w:cantSplit")) is None:
             tr_pr.append(OxmlElement("w:cantSplit"))
-        for cell in row.cells:
-            for paragraph in cell.paragraphs:
-                for run in paragraph.runs:
-                    run.font.size = Pt(table_spec["size_pt"])
-                    _set_rfonts(run, table_spec["font_east_asia"], table_spec["font_latin"])
+        if row_index == 0 and table_spec.get("header_bold") is False:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    for run in paragraph.runs:
+                        run.font.bold = False
+    # 遍历物理单元格，合并单元格不重复写；嵌套表格只改变段落格式，保留网格与合并结构。
+    han = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U000323af]")
+    hidden = {qn("w:del"), qn("w:moveFrom")}
+    for tc in table._tbl.iter(qn("w:tc")):
+        paragraphs = tc.findall(qn("w:p"))
+        value = "".join(node.text or "" for p in paragraphs for node in p.iter()
+                        if node.tag in {qn("w:t"), qn("m:t")}
+                        and not any(parent.tag in hidden for parent in node.iterancestors()))
+        key = None
+        if value.strip():
+            if han.search(value):
+                mixed = any(char.isalnum() and not han.fullmatch(char) for char in value)
+                key = "mixedAlignment" if mixed else "hanAlignment"
+            else:
+                key = "latinDigitAlignment"
+        for element in paragraphs:
+            paragraph = Paragraph(element, table)
+            if zero_indents:
+                _zero_story_indents(paragraph)
+            if key in table_spec:
+                paragraph.alignment = alignments[table_spec[key]]
+            for run in paragraph.runs:
+                run.font.size = Pt(table_spec["size_pt"])
+                _set_rfonts(run, table_spec["font_east_asia"], table_spec["font_latin"])
 
 
 def _apply_structural_formatting(path: Path, job: dict, profile: dict) -> list[str]:
@@ -674,6 +684,9 @@ def _apply_structural_formatting(path: Path, job: dict, profile: dict) -> list[s
 
     # Use the canonical profile property names consumed by OfficeCLI.
     page_props = profile.get("document_props", {})
+    if page_props.get("docDefaults.font.eastAsia") and page_props.get("docDefaults.font"):
+        stabilize_theme_fonts(document, east_asia=page_props["docDefaults.font.eastAsia"],
+                              latin=page_props["docDefaults.font"], east_asia_language=profile.get("theme_font_language"))
 
     def _parse_length(value: Any):
         """Parse an explicit OOXML-facing length; bare numbers mean cm."""
@@ -728,6 +741,11 @@ def _apply_structural_formatting(path: Path, job: dict, profile: dict) -> list[s
             _replace_story_text(section.even_page_header, title, font_ea=header["font_east_asia"], font_latin=header["font_latin"], size=header["size_pt"], alignment=WD_ALIGN_PARAGRAPH.CENTER)
             _replace_footer_with_page(section.footer, font_latin=footer["font_latin"], size=footer["size_pt"], alignment=WD_ALIGN_PARAGRAPH.RIGHT)
             _replace_footer_with_page(section.even_page_footer, font_latin=footer["font_latin"], size=footer["size_pt"], alignment=WD_ALIGN_PARAGRAPH.LEFT)
+            if section.different_first_page_header_footer:
+                # 首页面是否留白由原稿/格式契约决定；只消除继承的正文缩进。
+                for story in (section.first_page_header, section.first_page_footer):
+                    for paragraph in story.paragraphs:
+                        _zero_story_indents(paragraph)
     if job.get("scope") == "full_thesis":
         section_map = job.get("section_map", {})
         front = section_map.get("front_matter_section")
@@ -824,7 +842,9 @@ def build_layout(job: dict, paths: dict[str, str]) -> dict:
     after = _xml_semantic_snapshot(prepared)
     if before != after:
         changed = [key for key in before if before[key] != after.get(key)]
-        allowed = {"body_text_sha256", "paragraph_text_length"} if job.get("field_policy") != "preserve" else set()
+        allowed = ({"body_text_sha256", "paragraph_text_length"} if job.get("field_policy") != "preserve" else set())
+        if before.get("equation_semantic_sha256") == after.get("equation_semantic_sha256"):
+            allowed |= {"equation_xml_sha256", "equation_raw_xml_sha256"}
         unexpected = [key for key in changed if key not in allowed]
         if unexpected:
             raise RuntimeError(f"Thesis formatting changed semantic invariants: {unexpected}")
@@ -857,7 +877,7 @@ def restore_layout_sidecars(metadata: dict[str, Any], paths: dict[str, str]) -> 
 
 
 def _word_lock_path() -> Path:
-    return Path(tempfile.gettempdir()) / "officecli-word-revision" / "word-automation.lock"
+    return Path.home() / ".cache/wordrev/word-automation.lock"
 
 
 def _word_compare_script() -> str:
@@ -989,6 +1009,7 @@ def _word_refresh_script() -> str:
     return r'''
 on run argv
   set inputName to item 1 of argv
+  set inputPath to item 2 of argv
   with timeout of 900 seconds
   tell application "Microsoft Word"
     set previousAlerts to display alerts
@@ -1004,6 +1025,7 @@ on run argv
         end try
       end repeat
       if docRef is missing value then error "Word refresh input did not open"
+      if (posix full name of docRef) is not inputPath then error "Owned refresh path mismatch"
       set mainText to text object of docRef
       set fieldCount to 0
       set updatedCount to 0
@@ -1046,6 +1068,8 @@ on run argv
         try
           update tocRef
           update page numbers tocRef
+        on error
+          set errorCount to errorCount + 1
         end try
         set tocIndex to tocIndex + 1
       end repeat
@@ -1059,6 +1083,8 @@ on run argv
         try
           update tofRef
           update page numbers tofRef
+        on error
+          set errorCount to errorCount + 1
         end try
         set tofIndex to tofIndex + 1
       end repeat
@@ -1067,15 +1093,14 @@ on run argv
       set docRef to missing value
       set display alerts to previousAlerts
     on error errMsg number errNum
-      try
-        if docRef is not missing value then close docRef saving no
-      end try
+      -- An interrupted update may still be running in Word. Keep the owned
+      -- document and its staging for inspection; Python records pending state.
       set display alerts to previousAlerts
       error errMsg number errNum
     end try
   end tell
   end timeout
-  return "fields=" & fieldCount & ",updated=" & updatedCount & ",skipped=" & skippedCount & ",errors=" & errorCount
+  return "WORDREV_REFRESH_COMPLETE,fields=" & fieldCount & ",updated=" & updatedCount & ",skipped=" & skippedCount & ",errors=" & errorCount
 end run
 '''
 
@@ -1088,10 +1113,12 @@ def _word_refresh_selected_unlocked(path: Path) -> dict[str, Any]:
         handle.write(script)
         script_path = Path(handle.name)
     try:
-        process = run(["osascript", str(script_path), path.name], timeout=900)
+        process = run(["osascript", str(script_path), path.name, str(path.resolve())], timeout=900)
     finally:
         script_path.unlink(missing_ok=True)
     values = {}
+    if not process.stdout.strip().startswith("WORDREV_REFRESH_COMPLETE,"):
+        raise RuntimeError("WORD_REFRESH_COMPLETION_NOT_OBSERVED")
     for pair in process.stdout.strip().split(","):
         if "=" in pair:
             key, value = pair.split("=", 1)
@@ -1101,7 +1128,19 @@ def _word_refresh_selected_unlocked(path: Path) -> dict[str, Any]:
 
 def _word_refresh_selected(path: Path) -> dict[str, Any]:
     with _word_process_lock(_word_lock_path(), WORD_LOCK_TIMEOUT_SECONDS):
-        return _word_refresh_selected_unlocked(path)
+        try:
+            result = _word_refresh_selected_unlocked(path)
+        except Exception as exc:
+            from word_runtime import mark_word_pending
+            # Persist before unlocking so another process cannot enter between
+            # the failed native operation and its quarantine record.
+            mark_word_pending({"phase": "thesis-field-refresh", "owned_document": str(path.resolve()),
+                               "status": "UNRESOLVED_NATIVE_OPERATION", "error": str(exc)})
+            raise
+        if result.get("errors", 0):
+            # Native save/close completed, but some fields were not refreshed.
+            raise RuntimeError("WORD_FIELD_UPDATE_ERRORS: " + json.dumps(result))
+        return result
 
 
 def postprocess(job: dict, paths: dict[str, str]) -> None:
@@ -1125,7 +1164,13 @@ def postprocess(job: dict, paths: dict[str, str]) -> None:
                 _disable_automatic_field_refresh(staged_docx)
                 refresh = _word_refresh_selected(staged_docx)
                 shutil.copy2(staged_docx, accepted)
-            finally:
+            except Exception as exc:
+                Path(paths["refresh_log"]).write_text(json.dumps({
+                    "status": "FAILED_STAGING_RETAINED", "staged_docx": str(staged_docx),
+                    "error": str(exc), "retry": False,
+                }, ensure_ascii=False, indent=2), encoding="utf-8")
+                raise
+            else:
                 staged_docx.unlink(missing_ok=True)
         else:
             refresh = _word_refresh_selected(accepted)
@@ -1225,6 +1270,13 @@ def verify(job: dict, paths: dict[str, str], audit: dict, command_count: int) ->
                 errors.append("tracked_formatting_validation_failed")
     if after.get("floating_drawings", 0):
         warnings.append(f"floating_drawings_require_review:{after['floating_drawings']}")
+    integrity = {"skipped": True}
+    if "thesis_integrity" in job:
+        from thesis_integrity import audit as integrity_audit, load_bound_contract
+        integrity = integrity_audit(accepted, load_bound_contract(job["thesis_integrity"]))
+        if not integrity["all_pass"]:
+            errors.append("thesis_integrity_failed")
+        warnings.extend(item["code"] for item in integrity["review"])
     result = {
         "all_pass": not errors,
         "profile": profile["profile_id"],
@@ -1239,6 +1291,7 @@ def verify(job: dict, paths: dict[str, str], audit: dict, command_count: int) ->
         "validation": validation,
         "field_refresh": refresh,
         "tracked_formatting": tracked_qa,
+        "thesis_integrity": integrity,
         "warnings": sorted(set(warnings)),
         "errors": errors,
         "notebooklm": "disabled",
@@ -1287,6 +1340,15 @@ def verify_pdf(job: dict, paths: dict[str, str], pdf: Path, generic_pdf: dict) -
         "unexpected_blank_pages": unexpected_blank,
         "manual_review_required": ["first page", "first odd/even body pages", "TOC", "captions", "landscape pages", "footnotes", "references", "last page"],
     }
+    if job.get("rendered_document_qa"):
+        from rendered_document_qa import audit as audit_rendered
+        contract = job["rendered_document_qa"]
+        spec_path = Path(contract["path"])
+        if not spec_path.is_absolute() or sha256(spec_path) != contract["sha256"]:
+            raise ValueError("RENDERED_QA_CONTRACT_CHANGED")
+        rendered = audit_rendered(pdf, json.loads(spec_path.read_text()))
+        result["rendered_document_qa"] = rendered
+        result["all_pass"] = result["all_pass"] and rendered["status"] == "PASS"
     return result
 
 
@@ -1347,5 +1409,10 @@ def _export_pdf_unlocked(source: Path, output: Path, *, print_markup: bool = Fal
 
 
 def export_pdf(source: Path, output: Path, *, print_markup: bool = False) -> None:
-    with _word_process_lock(_word_lock_path(), WORD_LOCK_TIMEOUT_SECONDS):
-        _export_pdf_unlocked(source, output, print_markup=print_markup)
+    if print_markup:
+        raise ValueError("FINAL_PDF_MUST_HIDE_REVISIONS")
+    from word_pdf_service import export_pdf as export_owned
+    result = export_owned(source, output)
+    if not (result.get("success") is True and result.get("cleanup") == "PASS"
+            and result.get("input_unchanged") is True):
+        raise RuntimeError("WORD_PDF_INCOMPLETE: " + json.dumps(result, ensure_ascii=False))

@@ -1,0 +1,320 @@
+{
+  "schema_version": "1.0",
+  "profile_id": "ruc-doctoral-2026",
+  "profile_version": "1.1.0",
+  "sources": [
+    {
+      "id": "RUC-LOCAL",
+      "type": "user_supplied_snapshot",
+      "saved": "2026-03-07",
+      "sha256": "60abf7f47d0ccba48ab6fdfc52e68446a15be9426d9722fa7cd96b6ca0d60cd9",
+      "official_latest_verified": false
+    },
+    {
+      "id": "WORD-SECTION",
+      "url": "https://github.com/MicrosoftDocs/VBA-Docs/blob/main/api/Word.PageSetup.SectionStart.md",
+      "git_blob_sha": "637a9ce52b1dd1e4a998462527176cd8c9dfafaa",
+      "sha256": "2597d5561d6cfa16f0fdfae0d25c393295c251636e11ac4f3f327f41d1cf7175",
+      "retrieved": "2026-09-26"
+    },
+    {
+      "id": "WORD-LINK",
+      "url": "https://github.com/MicrosoftDocs/VBA-Docs/blob/main/api/Word.HeaderFooter.LinkToPrevious.md",
+      "git_blob_sha": "c3f389948452ade78512e17bbb16a3c34e503632",
+      "sha256": "b5bc04418e691c167400601939af66ddc92e1ff772c77c1a3a23d9f162187bd3",
+      "retrieved": "2026-09-26"
+    },
+    {
+      "id": "WORD-NUMBER",
+      "url": "https://github.com/MicrosoftDocs/VBA-Docs/blob/main/api/Word.PageNumbers.RestartNumberingAtSection.md",
+      "git_blob_sha": "93f44f22100bc2b715856261ada35cf433d21089",
+      "sha256": "0e7cd0640dd66ac67b428d8a9151778f3899880aeb4aca11060e3f8bbc700f1b",
+      "retrieved": "2026-09-26"
+    },
+    {
+      "id": "WORD-PAGEBREAK",
+      "url": "https://github.com/MicrosoftDocs/VBA-Docs/blob/main/api/Word.ParagraphFormat.PageBreakBefore.md",
+      "git_blob_sha": "2ac5f1c4679d3cdee8e7b2438a75da9afbf2611b",
+      "sha256": "2c2f6d20c7a892c0bd23a88f824b0a235c5af9031dd5ad661bf783a8c904c2c3",
+      "retrieved": "2026-09-26"
+    },
+    {
+      "id": "GITHUB-RELEASE",
+      "url": "https://github.com/github/docs/blob/main/content/repositories/releasing-projects-on-github/about-releases.md",
+      "git_blob_sha": "f331649901068843eafd6e9eba27f919d062c8be",
+      "sha256": "4feedd93b6247e24cc148937348910ff5f3a0506d165821ae187557b5d11904c",
+      "retrieved": "2026-09-26"
+    },
+    {
+      "id": "WORD-FIELD-TYPE",
+      "url": "https://github.com/MicrosoftDocs/VBA-Docs/blob/4a944c587afa362c5bc2490211f50736181cfc62/api/Word.WdFieldType.md",
+      "git_blob_sha": "a186eafedce604ab8ee6a6b84784e6b0ca07058b",
+      "sha256": "8831a509a6b672e765234e135bee57bf9c8abd564bd46816be7ad4bc4cc9ff89",
+      "retrieved": "2026-09-26",
+      "scope": "Supports STYLEREF field type; local supplemental check, not part of the frozen NLM packet or a native running-header validation"
+    }
+  ],
+  "rules": [
+    {
+      "id": "RUC-PAGE",
+      "authority": "institution_snapshot",
+      "source_locator": "一",
+      "requirement": "A4; top45/bottom40/inner35/outer30 mm; mirrored doctoral layout",
+      "verification": "profile + every section + native PDF"
+    },
+    {
+      "id": "RUC-HEADER",
+      "authority": "institution_snapshot",
+      "source_locator": "二",
+      "requirement": "Centered thesis title; SimSun10.5; header/footer25mm; outer doctoral page number",
+      "verification": "effective OOXML + actual glyph geometry"
+    },
+    {
+      "id": "RUC-NUMBER",
+      "authority": "institution_snapshot",
+      "source_locator": "二",
+      "requirement": "Roman front matter; decimal main text",
+      "verification": "explicit sections; Roman case separately contracted"
+    },
+    {
+      "id": "RUC-BODY",
+      "authority": "institution_snapshot",
+      "source_locator": "三",
+      "requirement": "12pt SimSun/TNR; exact20pt; two-character first-line indent",
+      "verification": "styles, character and length units, saved output"
+    },
+    {
+      "id": "RUC-HEADINGS",
+      "authority": "institution_snapshot",
+      "source_locator": "三",
+      "requirement": "18/14/12pt blackface headings; tertiary12pt SimSun",
+      "verification": "version1.1 corrects tertiary role; occupancy/spacing interpretation remains separate"
+    },
+    {
+      "id": "RUC-TOC",
+      "authority": "institution_snapshot",
+      "source_locator": "四",
+      "requirement": "TOC title16pt; level1 14pt blackface; levels2/3 12pt SimSun",
+      "verification": "optional explicit toc roles; native field/target page check"
+    },
+    {
+      "id": "RUC-CAPTION",
+      "authority": "institution_snapshot",
+      "source_locator": "五",
+      "requirement": "Figure/table10.5pt, zero first-line; chapter-local identifiers and cross-references",
+      "verification": "thesis_integrity.captions + explicit style maps"
+    },
+    {
+      "id": "RUC-TABLE",
+      "authority": "institution_recommendation",
+      "source_locator": "五",
+      "requirement": "Recommend three-line data tables and remove header bold in that recommended style",
+      "verification": "selected tables only; diagram carriers considered separately"
+    },
+    {
+      "id": "RUC-ROWHEIGHT",
+      "authority": "institution_snapshot",
+      "source_locator": "五",
+      "requirement": "Growing minimum row height for table content spanning pages; avoid exact-height clipping",
+      "verification": "selected row height rule plus actual Word PDF; repeat headers and oversize-row handling remain engineering choices"
+    },
+    {
+      "id": "RUC-IMAGE",
+      "authority": "institution_snapshot",
+      "source_locator": "五",
+      "requirement": "Inline images; single-spaced container to avoid clipping",
+      "verification": "objects.inline_images detects exact line and extent risk; native visual"
+    },
+    {
+      "id": "RUC-FOOTNOTE",
+      "authority": "institution_snapshot",
+      "source_locator": "六",
+      "requirement": "Native superscript notes at page bottom, per-page numbering,9pt",
+      "verification": "settings plus each section plus reference IDs; native saved-file check and same-section notes on distinct pages"
+    },
+    {
+      "id": "RUC-BIBLIOGRAPHY",
+      "authority": "institution_snapshot",
+      "source_locator": "六",
+      "requirement": "GB/T7714-2015; sequential numeric or author-date system",
+      "verification": "task CSL and native Zotero; semantic metadata separate"
+    },
+    {
+      "id": "RUC-BACKMATTER",
+      "authority": "institution_snapshot",
+      "source_locator": "六",
+      "requirement": "References/acknowledgements/appendices titles12pt blackface, text12pt SimSun",
+      "verification": "separate backmatter_title role"
+    },
+    {
+      "id": "USER-BIB-ORDER",
+      "authority": "user_requirement",
+      "source_locator": "current task",
+      "requirement": "One main bibliography after chapters; English then Chinese full-pinyin author order",
+      "verification": "actual live field output versus provenance-bearing declared keys"
+    },
+    {
+      "id": "USER-TABLE-ALIGN",
+      "authority": "user_requirement",
+      "source_locator": "project preference",
+      "requirement": "Han/mixed left; non-Han numeric/Latin/formula/date/interval right",
+      "verification": "selected table paragraphs; no thesis-wide universal claim"
+    },
+    {
+      "id": "USER-APPENDIX-PUBLIC",
+      "authority": "user_requirement",
+      "source_locator": "approved plan",
+      "requirement": "Publish generic strategy and synthetic examples only",
+      "verification": "scope check before commit"
+    },
+    {
+      "id": "ENG-BLOCKS",
+      "authority": "engineering",
+      "source_locator": "WORD-SECTION,WORD-PAGEBREAK",
+      "requirement": "New page and new section are separate requirements",
+      "verification": "explicit ordered anchors; no blanket new-section rule"
+    },
+    {
+      "id": "ENG-STORY-LINKS",
+      "authority": "engineering",
+      "source_locator": "WORD-LINK,WORD-FIELD-TYPE",
+      "requirement": "Default/even/first header and footer links separate",
+      "verification": "sections.stories + native effective page checks; changing header wording alone may be served by fields"
+    },
+    {
+      "id": "ENG-NUMBER-CONTINUE",
+      "authority": "engineering",
+      "source_locator": "WORD-NUMBER",
+      "requirement": "New section does not require restarting page1",
+      "verification": "page_number.start=continue rejects explicit start"
+    },
+    {
+      "id": "ENG-LANDSCAPE",
+      "authority": "engineering",
+      "source_locator": "WORD-SECTION",
+      "requirement": "Landscape boundaries restore portrait and page continuity",
+      "verification": "explicit section rules + both boundary PDF pages"
+    },
+    {
+      "id": "ENG-FIELD-SCOPE",
+      "authority": "engineering",
+      "source_locator": "case:field-integrity",
+      "requirement": "Parse complex/simple/nested/adjacent fields per story",
+      "verification": "parser negative controls; no paragraph-wide JSON concatenation"
+    },
+    {
+      "id": "ENG-BOOKMARK",
+      "authority": "engineering",
+      "source_locator": "case:field-integrity",
+      "requirement": "Check REF payload; positional PAGEREF may be zero-length",
+      "verification": "BOOKMARK and REFERENCE errors, valid counterexample"
+    },
+    {
+      "id": "ENG-CAPTION-PAIR",
+      "authority": "engineering",
+      "source_locator": "case:pagination",
+      "requirement": "Keep table caption with first row and picture with following figure caption",
+      "verification": "split table_caption/figure_caption; long-chain review warning"
+    },
+    {
+      "id": "ENG-OBJECT-ORDER",
+      "authority": "engineering",
+      "source_locator": "case:layout-binding",
+      "requirement": "Stable object IDs plus physical number order; author confirms first-reference logic",
+      "verification": "explicit anchors and gap option; authorized unambiguous mappings may move automatically, ambiguous semantic order requires author adjudication"
+    },
+    {
+      "id": "ENG-OBJECT-PAGE",
+      "authority": "engineering",
+      "source_locator": "case:pagination",
+      "requirement": "Object-only pages can be appropriate",
+      "verification": "advisory visual judgment, never a universal failure"
+    },
+    {
+      "id": "ENG-INDENTS",
+      "authority": "engineering",
+      "source_locator": "case:effective-indents",
+      "requirement": "Length and character indentation plus inherited styles must agree",
+      "verification": "effective_paragraph; selected-table zeros; save/reopen"
+    },
+    {
+      "id": "ENG-FONT-THEME",
+      "authority": "engineering",
+      "source_locator": "case:rendered-fonts",
+      "requirement": "Effective theme/language may differ from requested face",
+      "verification": "profile-scoped theme fix + rendered glyph regions"
+    },
+    {
+      "id": "ENG-BIB-KEYS",
+      "authority": "engineering",
+      "source_locator": "case:bibliography",
+      "requirement": "Keep display names and sourced sorting keys separate",
+      "verification": "language from metadata; complete pinyin; versioned item writes"
+    },
+    {
+      "id": "ENG-BIB-REFRESH",
+      "authority": "engineering",
+      "source_locator": "case:bibliography",
+      "requirement": "Native Zotero creation/refresh must persist in saved Word/PDF",
+      "verification": "XML edits or HTTP200 cannot certify visible rebuild; optional entry-paragraph check supplements text/order matching"
+    },
+    {
+      "id": "ENG-PAGINATION",
+      "authority": "engineering",
+      "source_locator": "case:toc-stability",
+      "requirement": "Repaginate and update TOCs until observed results stabilize within a bound",
+      "verification": "native saved/reopened target page map; auto TOC names compared by resolved display position and text, with raw snapshots retained"
+    },
+    {
+      "id": "ENG-EQUATION",
+      "authority": "engineering",
+      "source_locator": "case:semantic-qa",
+      "requirement": "Retain raw equation hashes and compare versioned semantic projection",
+      "verification": "ignore only defined formatting; preserve tokens/math structure"
+    },
+    {
+      "id": "ENG-WORD-LOCK",
+      "authority": "engineering",
+      "source_locator": "case:native-runtime",
+      "requirement": "One persistent process lock; owned document addressing; pending-state evidence",
+      "verification": "same-thread nesting, other threads/processes excluded"
+    },
+    {
+      "id": "ENG-APPENDIX",
+      "authority": "engineering",
+      "source_locator": "GITHUB-RELEASE",
+      "requirement": "Fixed version, commit, asset hashes, truthful scope and licenses",
+      "verification": "external archive/immutable release only when actually configured"
+    },
+    {
+      "id": "ENG-PACKAGE",
+      "authority": "engineering",
+      "source_locator": "case:final-package",
+      "requirement": "ZIP members, names, sizes,CRC,SHA and frozen outputs independently read back",
+      "verification": "receipt outside frozen archive; no repeated repack merely for acknowledgements"
+    },
+    {
+      "id": "ENG-NLM",
+      "authority": "engineering",
+      "source_locator": "case:author-adjudication",
+      "requirement": "Preserve original answers/citations; separate same-response transport excerpts",
+      "verification": "local source match plus author decision; NLM is not institutional authority"
+    },
+    {
+      "id": "USER-ROMAN-CASE",
+      "authority": "user_requirement",
+      "source_locator": "Explicit project decision 2026-09-26 after NLM review",
+      "requirement": "upperRoman I/II/III for new manuscripts; preserve existing task-pinned profiles",
+      "verification": "profile page_numbering.front_matter; per-task section contract and native page results"
+    },
+    {
+      "id": "USER-HEADING-SPACING",
+      "authority": "user_requirement",
+      "source_locator": "Explicit project decision 2026-09-26 after NLM review",
+      "requirement": "Keep before/after values chapter50/80, heading1 50/50, heading2 20/20pt; no invented aggregate occupied-line constraint",
+      "verification": "profile style roles plus native pagination; interpretive ambiguity remains documented"
+    }
+  ],
+  "interpretation_review": "format-review-decisions.md; five real queries,71 native references,33 author decisions; remaining template choices explicitly resolved by user 2026-09-26",
+  "private_case_evidence": "Original task records retained privately; public tests use synthetic input; case identifiers are provenance categories, not public document attachments."
+}

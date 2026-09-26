@@ -63,7 +63,7 @@ def effective_run(document,p,r):
         if f is not None:
             for key in ['ascii','hAnsi','eastAsia','cs']:
                 if f.get(qn('w:'+key)) is not None:vals[key]=f.get(qn('w:'+key))
-        for key in ['sz','szCs','b','bCs']:
+        for key in ['sz','szCs','b','bCs','vertAlign']:
             n=pr.find(qn('w:'+key))
             if n is not None:vals[key]=bool_value(n) if key in ['b','bCs'] else n.get(qn('w:val'))
     styles={s.style_id:s.element for s in document.styles}

@@ -325,6 +325,9 @@ class Pipeline:
         paths = [Path(__file__).resolve(), Path(self.job["adapter"])]
         paths.append(SCRIPT_DIR / "word_runtime.py")
         paths.extend([SCRIPT_DIR / "journal_layout.py", SCRIPT_DIR / "manuscript_format.py", SCRIPT_DIR / "native_table_fit.py"])
+        if any(key in self.job for key in ("thesis_integrity", "rendered_document_qa")):
+            paths.extend([SCRIPT_DIR / "thesis_integrity.py", SCRIPT_DIR / "rendered_document_qa.py",
+                          SCRIPT_DIR.parent / "references/thesis-integrity.schema.json"])
         if hasattr(self.adapter, "dependency_paths"):
             paths.extend(Path(value) for value in self.adapter.dependency_paths())
         return {str(path): sha256(path) for path in paths if path.is_file()}
@@ -349,6 +352,12 @@ class Pipeline:
             ]
 
     def _validate_job(self) -> None:
+        for key in ("thesis_integrity", "rendered_document_qa"):
+            if key in self.job:
+                if self.scenario != "thesis_format":
+                    raise ValueError(f"{key} requires the thesis_format adapter")
+                from thesis_integrity import load_bound_contract
+                load_bound_contract(self.job[key], validate=key == "thesis_integrity")
         required = ("schema_version", "job_id", "source", "adapter", "run_dir", "cache_dir")
         missing = [key for key in required if not self.job.get(key)]
         if missing:
@@ -763,6 +772,11 @@ class Pipeline:
         if self.job.get("analysis_manifest"):
             path = Path(self.job["analysis_manifest"])
             hashes["analysis_artifacts"] = stable_hash(analysis_artifacts(json.loads(path.read_text()), path.parent))
+        for key in ("thesis_integrity", "rendered_document_qa"):
+            if key in self.job:
+                from thesis_integrity import load_bound_contract
+                load_bound_contract(self.job[key], validate=key == "thesis_integrity")
+                hashes[key] = self.job[key]["sha256"]
         return hashes
 
     def _export_pdf(self, source: Path, output: Path, label: str) -> None:
@@ -1093,6 +1107,11 @@ class Pipeline:
             # Shared final-file gates cannot be replaced by a project's narrower
             # numeric or caption-presence checks. Check AFTER Word round-trip.
             shared_docx_qa = {}
+            if "thesis_integrity" in self.job:
+                from thesis_integrity import audit as integrity_audit, load_bound_contract
+                shared_docx_qa["thesis_integrity"] = integrity_audit(
+                    accepted, load_bound_contract(self.job["thesis_integrity"])
+                )
             if self.scenario == "manuscript_revision":
                 from manuscript_format import audit_native_clean
                 shared_docx_qa['accepted_native_revisions'] = audit_native_clean(accepted)
@@ -1122,6 +1141,12 @@ class Pipeline:
                 self.adapter.verify_pdf(self.job, self.paths, accepted_pdf, pdf)
                 if hasattr(self.adapter, "verify_pdf") else {"all_pass": True}
             )
+            if "rendered_document_qa" in self.job and "rendered_document_qa" not in adapter_pdf:
+                from rendered_document_qa import audit as rendered_audit
+                from thesis_integrity import load_bound_contract
+                rendered = rendered_audit(accepted_pdf, load_bound_contract(self.job["rendered_document_qa"], validate=False))
+                adapter_pdf["rendered_document_qa"] = rendered
+                adapter_pdf["all_pass"] = bool(adapter_pdf.get("all_pass", True)) and rendered["status"] == "PASS"
             if "publication_layout" in self.job:
                 publication_qa = adapter_pdf.get("publication_layout_qa", {})
                 if not publication_qa.get("all_pass"):

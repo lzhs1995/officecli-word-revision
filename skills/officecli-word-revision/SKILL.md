@@ -5,6 +5,10 @@ description: Revise journal manuscripts with native Word tracked changes or form
 
 # OfficeCLI Academic Word
 
+## macOS 自动化故障：优先执行规则
+
+用户已明确授权自动处理时，必须沿用该授权并执行[macOS TCC 自动恢复规则](references/macos-tcc-zotero-word.md)，不得再次把同一个 Automation 开关或确认问题交给用户。先按实际发送方核查，再按已授权范围自动恢复；TCC.db 备份/重置是有证据的恢复动作，不是普通文稿流水线的隐含动作。多个 agent 只保留一个恢复执行者，其余继续离线工作；Claude 持续失效时沿既有授权切换 supervisor 单 agent，不停整个任务。实际原生操作未通过前，不得把“已记录规则”“权限条目存在”或“退出码0”称为恢复成功。
+
 Use the `wordrev` CLI for document production. First identify the scenario; do not mix content revision and thesis-wide formatting in one write job.
 
 ## Scenario Routing
@@ -13,6 +17,17 @@ Use the `wordrev` CLI for document production. First identify the scenario; do n
 - `thesis_format`: doctoral-thesis page layout, styles, sections, headers/footers, page numbering, TOC, captions, cross-references, footnotes, and reference-list layout. Read [thesis-format.md](references/thesis-format.md). When `profile=ruc-doctoral-2026`, also read [ruc-doctoral-2026.md](references/ruc-doctoral-2026.md).
 
 Use separate sequential jobs when both are needed: finish and approve content revisions first, then format the accepted document.
+
+For whole-thesis integration, read [全文统稿指南](references/full-thesis-formatting.md) and
+[规则来源矩阵](references/ruc-rule-sources.json). Distinguish the supplied institution snapshot,
+project requirements and engineering choices. A new page does not by itself require a new section;
+figure-only/table-only pages can be appropriate. Do not automatically enforce unresolved interpretations.
+
+Use the opt-in [thesis integrity contract](references/thesis-integrity.md) to bind content blocks,
+section properties, captions, footnotes and bibliography to a read-only check. Anchor real objects rather
+than matching their text in a list of figures. Its PASS is scoped structural evidence, not native pagination,
+Zotero Refresh, linguistic correctness of sorting keys or author review. For electronic appendices read
+[发布策略](references/electronic-appendices.md); real thesis attachments are outside the public examples.
 
 ## Common Workflow
 
@@ -43,6 +58,13 @@ For manuscripts without an explicit venue style guide, read [generic-journal-lay
 
 ## Guardrails
 
+For macOS PDF export read [mac-word-pdf.md](references/mac-word-pdf.md).
+`scripts/word_pdf_service.py INPUT.docx OUTPUT.pdf` and the thesis adapter share
+one service and OS lock. Render byte-identical copies inside Word's own sandbox,
+then validate and publish without overwriting. A timeout retains the owned
+staging and pending state; do not auto-close or retry an uncertain operation.
+OfficeCLI version policy is separate from Word PDF export.
+
 ### macOS Zotero/TCC recovery
 
 When Word shows Zotero controls but the controls do nothing, read [macos-tcc-zotero-word.md](references/macos-tcc-zotero-word.md). Full Disk Access and Automation (Apple Events) are separate permissions. Test the native Zotero route on a safe copy and preserve field-count evidence. If a targeted `tccutil reset AppleEvents` fails, use only backed-up per-user TCC recovery as a last resort; never delete TCC data automatically and never claim that a Terminal `-1743` probe alone diagnoses Zotero.
@@ -51,7 +73,7 @@ When Word shows Zotero controls but the controls do nothing, read [macos-tcc-zot
 - Serialize all Word, Zotero, and same-file OfficeCLI writes. Microsoft Word automation is protected by a cross-process lock; a lock timeout is a hard failure with owner/path/wait diagnostics, never permission to start a concurrent writer.
 - Word helper scripts must address the owned document explicitly and must not bring Word to the foreground with application-level `activate`. A timeout is recorded as return code 124 and terminates the launched process group before the phase fails.
 - Run read-only QA in parallel only after the DOCX hashes are frozen.
-- Preserve Zotero fields as live `ADDIN ZOTERO_ITEM CSL_CITATION` fields; never type an author-year citation as a substitute.
+- Preserve Zotero fields as live `ADDIN ZOTERO_ITEM CSL_CITATION` fields; never type an author-year citation as a substitute. Do not use Computer Use, screenshots, or cliclick to operate Zotero or Word. OfficeCLI and zotero-mcp cannot mint ADDIN fields. Create a live bibliography only with Word+Zotero.dotm `ZoteroAddEditBibliography`, then `ZoteroRefresh`. `ZoteroRefresh` cannot create a bibliography from nothing. Accept fields only after a structure audit (`pass==true`), never by grepping `ZOTERO_BIBL`.
 - Do not invoke NotebookLM. Local notes may document requirements, but they do not authorize a NotebookLM call.
 - Do not launch R, Stata, Python analysis, or model estimation. Consume `analysis_manifest.json` and stable result keys only.
 - On macOS, refresh Word fields and export the authoritative PDF through the script-driven Microsoft Word AppleScript adapter; do not use Computer Use or rely on `officecli refresh` for DOCX. If Word Apple Events are unavailable, fail the Word-fidelity gate and optionally emit a separately labelled LibreOffice compatibility preview.
@@ -67,7 +89,7 @@ When Word shows Zotero controls but the controls do nothing, read [macos-tcc-zot
 - A nonblank PDF is not visual acceptance. When `publication_layout` is present, the adapter must return a passing `publication_layout_qa` based on the final Word-rendered PDF, including object-page narrative checks.
 - Resolve actual typography, not just style names. A style can inherit a different size through `basedOn`; do not clear direct formatting until the intended effective font is known. A user-approved `format_contract` binds body/table/caption typography and object count to final-file QA.
 - For new or revised Chinese manuscript jobs, explicitly populate `format_contract` before writing: table Chinese uses SimSun, Latin letters/numbers use Times New Roman; use the user's or audited mother's point size, not a past project's hardcoded size. Apply `han-left-nonhan-right`: cells containing Han are left-aligned; Latin/numeric-only cells are right-aligned, including headers. Mixed-language cells retain script-specific fonts. A thesis profile or explicit user rule takes precedence.
-- The current manuscript's approved body/table size is 10.5 pt; this is a job value, not a universal thesis setting. All target tables must be covered, including unchanged rows of a touched descriptive table. Record exceptions only for genuine diagram carriers, never for uninspected old numerical tables.
+- Use the current job's approved body/table size; a previous manuscript's 10.5 pt is not a universal thesis setting. Cover all selected tables, including unchanged rows of a touched descriptive table. Record exceptions only for actual diagram carriers, never for uninspected old numerical tables.
 - Table zero indentation must override both character units and length units explicitly. Deleting `firstLineChars` can inherit a two-character indent that Word materializes on save. Test after Word accepts/saves, not only in pre-render XML.
 - For the RUC doctoral-thesis profile, apply the explicit table alignment rule: every table paragraph has first-line and hanging indent 0; Han-dominant content is left-aligned; Latin/digit-dominant content is right-aligned, including headers; mixed cells follow the Han-left rule. Re-run the validator after Word round-trip and inspect the Word PDF.
 - Parse `w:b`/`w:bCs` values: an element with `val=0`, `false` or `off` means false. Never use element existence as the bold state or automatically bold all table headers.
@@ -79,3 +101,8 @@ When Word shows Zotero controls but the controls do nothing, read [macos-tcc-zot
 - Wording/field QA must enumerate document, footnotes, endnotes, headers and footers, not just body paragraphs. Evidence classes remain separate: structure, visual rendering, numeric source agreement, execution reproduction and methodological validity. Passing one does not establish the others.
 
 See [workflow.md](references/workflow.md) for cache invalidation and failure recovery.
+
+For chapter-scale native closeout and shared Word ownership, read [Native document closeout evidence](references/native-closeout-evidence.md). Keep document QA separate from full statistical reproduction and retain the controlling workflow's authorized dual/solo mode. This reference does not enable NLM inside a Word revision job.
+
+
+For theme fonts, native PDF glyph checks, inherited story indents, equation metadata and shared handoffs, read [rendering-and-handoff-evidence.md](references/rendering-and-handoff-evidence.md).

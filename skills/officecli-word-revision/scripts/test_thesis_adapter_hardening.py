@@ -295,6 +295,7 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(sys.argv[1]).parent))
 spec = importlib.util.spec_from_file_location("lock_adapter", Path(sys.argv[1]))
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
@@ -358,15 +359,14 @@ class WordAutomationSafetyTest(unittest.TestCase):
     def test_actual_scripts_restore_alerts_and_close_only_owned_refs(self):
         compare_script = adapter._word_compare_script()
         refresh_script = adapter._word_refresh_script()
-        pdf_script = adapter._word_pdf_script()
-        for script in (compare_script, refresh_script, pdf_script):
+        for script in (compare_script, refresh_script):
             self.assertIn("on error errMsg number errNum", script)
             self.assertIn("set display alerts to previousAlerts", script)
             self.assertNotIn("document 1", script)
         for reference in ("originalDoc", "revisedDoc", "comparedDoc"):
             self.assertIn(f"if {reference} is not missing value then close {reference} saving no", compare_script)
-        self.assertIn("if docRef is not missing value then close docRef saving no", refresh_script)
-        self.assertIn("if docRef is not missing value then close docRef saving no", pdf_script)
+        self.assertNotIn("if docRef is not missing value then close docRef saving no", refresh_script)
+        self.assertIn("Owned refresh path mismatch", refresh_script)
 
     def test_refresh_production_entry_point_acquires_lock(self):
         with patch.object(adapter, "_word_process_lock") as lock, patch.object(
@@ -376,6 +376,52 @@ class WordAutomationSafetyTest(unittest.TestCase):
         self.assertEqual(result, {"updated": 1})
         lock.assert_called_once_with(adapter._word_lock_path(), adapter.WORD_LOCK_TIMEOUT_SECONDS)
         unlocked.assert_called_once_with(Path("example.docx"))
+
+    def test_failed_refresh_records_pending_before_other_writer_can_enter(self):
+        from concurrent.futures import ThreadPoolExecutor
+        from word_runtime import word_lock
+        with tempfile.TemporaryDirectory() as directory:
+            lock_path = Path(directory) / "word.lock"
+            def blocked_writer():
+                with word_lock("competing-writer", path=lock_path, timeout=.1):
+                    return "entered"
+            def pending(state):
+                self.assertEqual(state["status"], "UNRESOLVED_NATIVE_OPERATION")
+                with ThreadPoolExecutor(max_workers=1) as pool:
+                    with self.assertRaises(TimeoutError):
+                        pool.submit(blocked_writer).result()
+            with patch.object(adapter, "_word_lock_path", return_value=lock_path), patch.object(
+                adapter, "_word_refresh_selected_unlocked", side_effect=TimeoutError("owned update uncertain")
+            ), patch("word_runtime.mark_word_pending", side_effect=pending) as mark:
+                with self.assertRaises(TimeoutError):
+                    adapter._word_refresh_selected(Path(directory) / "owned.docx")
+            mark.assert_called_once()
+            self.assertEqual(blocked_writer(), "entered")
+
+    def test_postprocess_failed_refresh_preserves_actual_staging(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "prepared.docx"
+            Document().save(source)
+            paths = {"prepared": str(source), "accepted": str(root / "accepted.docx"),
+                     "refresh_log": str(root / "refresh.json")}
+            job = {"job_id": "synthetic", "scope": "full_thesis",
+                   "word_pdf_staging_dir": str(root / "stage")}
+            with patch.object(adapter, "_word_refresh_selected", side_effect=TimeoutError("unknown update")):
+                with self.assertRaises(TimeoutError):
+                    adapter.postprocess(job, paths)
+            receipt = json.loads(Path(paths["refresh_log"]).read_text())
+            self.assertEqual(receipt["status"], "FAILED_STAGING_RETAINED")
+            self.assertTrue(Path(receipt["staged_docx"]).is_file())
+            self.assertEqual(source.read_bytes(), Path(paths["accepted"]).read_bytes())
+
+    def test_native_field_errors_fail_even_after_clean_close(self):
+        with patch.object(adapter, "_word_process_lock"), patch.object(
+            adapter, "_word_refresh_selected_unlocked", return_value={"updated": 2, "errors": 1}
+        ), patch("word_runtime.mark_word_pending") as mark:
+            with self.assertRaisesRegex(RuntimeError, "WORD_FIELD_UPDATE_ERRORS"):
+                adapter._word_refresh_selected(Path("example.docx"))
+        mark.assert_not_called()
 
     def test_compare_production_entry_point_acquires_lock(self):
         with patch.object(adapter, "_word_process_lock") as lock, patch.object(
@@ -388,21 +434,43 @@ class WordAutomationSafetyTest(unittest.TestCase):
         lock.assert_called_once_with(adapter._word_lock_path(), adapter.WORD_LOCK_TIMEOUT_SECONDS)
         unlocked.assert_called_once()
 
-    def test_pdf_production_entry_point_acquires_lock(self):
-        with patch.object(adapter, "_word_process_lock") as lock, patch.object(
-            adapter, "_export_pdf_unlocked"
-        ) as unlocked:
+    def test_pdf_entry_delegates_to_canonical_locking_service(self):
+        with patch('word_pdf_service.export_pdf', return_value={
+            'success': True, 'cleanup': 'PASS', 'input_unchanged': True
+        }) as service:
             adapter.export_pdf(Path("source.docx"), Path("output.pdf"), print_markup=False)
-        lock.assert_called_once_with(adapter._word_lock_path(), adapter.WORD_LOCK_TIMEOUT_SECONDS)
-        unlocked.assert_called_once_with(
-            Path("source.docx"), Path("output.pdf"), print_markup=False
-        )
+        service.assert_called_once_with(Path('source.docx'), Path('output.pdf'))
+
+    def test_pdf_entry_rejects_incomplete_cleanup(self):
+        with patch('word_pdf_service.export_pdf', return_value={
+            'success': True, 'cleanup': 'PENDING'
+        }), self.assertRaises(RuntimeError):
+            adapter.export_pdf(Path('source.docx'), Path('output.pdf'))
 
 
 class FinalSemanticGateTest(unittest.TestCase):
     def test_new_payload_invariants_are_mandatory(self):
-        required = {"media_payload_sha256", "media_usage_sha256", "equation_xml_sha256"}
+        required = {"media_payload_sha256", "media_usage_sha256", "equation_semantic_sha256"}
         self.assertTrue(required.issubset(set(adapter.SEMANTIC_INVARIANT_KEYS)))
+
+    def test_equation_format_only_change_keeps_semantics_but_token_change_does_not(self):
+        from lxml import etree
+        from docx.oxml.ns import qn
+        value = etree.fromstring(b'<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><m:r><w:rPr><w:sz w:val="24"/></w:rPr><m:t>x+1</m:t></m:r></m:oMath>')
+        original = adapter._equation_projection(value)
+        value[0][0][0].set(qn('w:val'), '22')
+        self.assertEqual(original, adapter._equation_projection(value))
+        value[0][-1].text = 'x-1'
+        self.assertNotEqual(original, adapter._equation_projection(value))
+
+    def test_equation_vector_bold_and_superscript_properties_remain_significant(self):
+        from docx.oxml.ns import qn
+        value = etree.fromstring(b'<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><m:r><w:rPr/><m:t>x</m:t></m:r></m:oMath>')
+        original = adapter._equation_projection(value)
+        for name, attrs in (("b", {}), ("i", {}), ("vertAlign", {qn("w:val"): "superscript"})):
+            prop = etree.SubElement(value[0][0], qn("w:" + name), **attrs)
+            self.assertNotEqual(original, adapter._equation_projection(value))
+            value[0][0].remove(prop)
 
 
 if __name__ == "__main__":
