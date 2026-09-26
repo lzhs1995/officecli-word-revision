@@ -44,6 +44,14 @@
       "git_blob_sha": "f331649901068843eafd6e9eba27f919d062c8be",
       "sha256": "4feedd93b6247e24cc148937348910ff5f3a0506d165821ae187557b5d11904c",
       "retrieved": "2026-09-26"
+    },
+    {
+      "id": "WORD-FIELD-TYPE",
+      "url": "https://github.com/MicrosoftDocs/VBA-Docs/blob/4a944c587afa362c5bc2490211f50736181cfc62/api/Word.WdFieldType.md",
+      "git_blob_sha": "a186eafedce604ab8ee6a6b84784e6b0ca07058b",
+      "sha256": "8831a509a6b672e765234e135bee57bf9c8abd564bd46816be7ad4bc4cc9ff89",
+      "retrieved": "2026-09-26",
+      "scope": "Supports STYLEREF field type; local supplemental check, not part of the frozen NLM packet or a native running-header validation"
     }
   ],
   "rules": [
@@ -100,8 +108,15 @@
       "id": "RUC-TABLE",
       "authority": "institution_recommendation",
       "source_locator": "五",
-      "requirement": "Three-line table; remove header bold; growing row height",
+      "requirement": "Recommend three-line data tables and remove header bold in that recommended style",
       "verification": "selected tables only; diagram carriers considered separately"
+    },
+    {
+      "id": "RUC-ROWHEIGHT",
+      "authority": "institution_snapshot",
+      "source_locator": "五",
+      "requirement": "Growing minimum row height for table content spanning pages; avoid exact-height clipping",
+      "verification": "selected row height rule plus actual Word PDF; repeat headers and oversize-row handling remain engineering choices"
     },
     {
       "id": "RUC-IMAGE",
@@ -115,7 +130,7 @@
       "authority": "institution_snapshot",
       "source_locator": "六",
       "requirement": "Native superscript notes at page bottom, per-page numbering,9pt",
-      "verification": "settings plus each section plus reference IDs"
+      "verification": "settings plus each section plus reference IDs; native saved-file check and same-section notes on distinct pages"
     },
     {
       "id": "RUC-BIBLIOGRAPHY",
@@ -162,9 +177,9 @@
     {
       "id": "ENG-STORY-LINKS",
       "authority": "engineering",
-      "source_locator": "WORD-LINK",
+      "source_locator": "WORD-LINK,WORD-FIELD-TYPE",
       "requirement": "Default/even/first header and footer links separate",
-      "verification": "sections.stories + native effective page checks"
+      "verification": "sections.stories + native effective page checks; changing header wording alone may be served by fields"
     },
     {
       "id": "ENG-NUMBER-CONTINUE",
@@ -206,7 +221,7 @@
       "authority": "engineering",
       "source_locator": "case:layout-binding",
       "requirement": "Stable object IDs plus physical number order; author confirms first-reference logic",
-      "verification": "explicit anchors, gap option; no automatic movement"
+      "verification": "explicit anchors and gap option; authorized unambiguous mappings may move automatically, ambiguous semantic order requires author adjudication"
     },
     {
       "id": "ENG-OBJECT-PAGE",
@@ -241,14 +256,14 @@
       "authority": "engineering",
       "source_locator": "case:bibliography",
       "requirement": "Native Zotero creation/refresh must persist in saved Word/PDF",
-      "verification": "XML edits or HTTP200 cannot certify visible rebuild"
+      "verification": "XML edits or HTTP200 cannot certify visible rebuild; optional entry-paragraph check supplements text/order matching"
     },
     {
       "id": "ENG-PAGINATION",
       "authority": "engineering",
       "source_locator": "case:toc-stability",
       "requirement": "Repaginate and update TOCs until observed results stabilize within a bound",
-      "verification": "native saved/reopened target page map, not counters alone"
+      "verification": "native saved/reopened target page map; auto TOC names compared by resolved display position and text, with raw snapshots retained"
     },
     {
       "id": "ENG-EQUATION",
@@ -284,8 +299,22 @@
       "source_locator": "case:author-adjudication",
       "requirement": "Preserve original answers/citations; separate same-response transport excerpts",
       "verification": "local source match plus author decision; NLM is not institutional authority"
+    },
+    {
+      "id": "USER-ROMAN-CASE",
+      "authority": "user_requirement",
+      "source_locator": "Explicit project decision 2026-09-26 after NLM review",
+      "requirement": "upperRoman I/II/III for new manuscripts; preserve existing task-pinned profiles",
+      "verification": "profile page_numbering.front_matter; per-task section contract and native page results"
+    },
+    {
+      "id": "USER-HEADING-SPACING",
+      "authority": "user_requirement",
+      "source_locator": "Explicit project decision 2026-09-26 after NLM review",
+      "requirement": "Keep before/after values chapter50/80, heading1 50/50, heading2 20/20pt; no invented aggregate occupied-line constraint",
+      "verification": "profile style roles plus native pagination; interpretive ambiguity remains documented"
     }
   ],
-  "interpretation_review": "format-review-decisions.md; pending actual NLM adjudication during implementation",
+  "interpretation_review": "format-review-decisions.md; five real queries,71 native references,33 author decisions; remaining template choices explicitly resolved by user 2026-09-26",
   "private_case_evidence": "Original task records retained privately; public tests use synthetic input; case identifiers are provenance categories, not public document attachments."
 }

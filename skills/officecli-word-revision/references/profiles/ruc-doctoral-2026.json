@@ -187,7 +187,7 @@
     "distance_cm": 2.5
   },
   "page_numbering": {
-    "front_matter": "lowerRoman",
+    "front_matter": "upperRoman",
     "body": "decimal",
     "body_start": 1
   },
@@ -252,8 +252,8 @@
   "provenance": {
     "institution_snapshot": "User-supplied 2026-03-07 snapshot; not claimed as latest official publication",
     "rule_matrix": "ruc-rule-sources.json",
-    "front_matter_roman_case": "lowerRoman is a compatibility default, not an independently verified university requirement",
-    "heading_spacing": "Compatibility translation of before/after line values at 20pt; occupied-line totals are unresolved, not an independently verified aggregate height",
+    "front_matter_roman_case": "User selected upperRoman for new manuscripts on 2026-09-26; not asserted as the sole institutional interpretation. Existing task-pinned profiles remain unchanged.",
+    "heading_spacing": "User confirmed literal before/after translation at 20pt on 2026-09-26: chapter50/80, heading1 50/50, heading2 20/20pt. Occupied-line totals are not enforced as an independently derived aggregate height.",
     "table_alignment": "User preference; see source matrix"
   }
 }

@@ -79,6 +79,7 @@ wordrev verify --job /absolute/path/job.json --run-dir /absolute/path/run --resu
 [全文统稿指南](skills/officecli-word-revision/references/full-thesis-formatting.md)覆盖人大要求、摘要与三目录、
 原生脚注与书目、分节判断、图表排序与美观、保存重开及恢复踩坑。
 [来源矩阵](skills/officecli-word-revision/references/ruc-rule-sources.json)区分学校存档、用户要求和工程建议；
+[真实审议与用户裁决](skills/officecli-word-revision/references/format-review-decisions.md)记录5次NLM返回、71原引、33项裁决及新稿默认选择；
 [电子附录策略](skills/officecli-word-revision/references/electronic-appendices.md)说明版本、许可和实际成员校验。
 
 以下命令从本仓根执行，输出目录必须尚不存在：
