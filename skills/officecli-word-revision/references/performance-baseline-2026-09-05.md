@@ -15,10 +15,7 @@ Cache evidence:
 - A no-change `--resume` in the same run directory validates recorded output hashes and returns without reopening Word.
 - A source, profile, style/section/table/field contract, adapter, or engine hash change invalidates the affected phase.
 
-Evidence files:
-
-- Manuscript benchmark: `/Users/lzhs/Desktop/20251202 CMAverse_4_way Decomposition/20260904_basic_regression_eight_chains_v7_1/performance/word_revision_pipeline_v1/benchmarks/20260905T091100_xf95e0j6/benchmark.json`
-- Thesis benchmark: `/Users/lzhs/Desktop/wordrev_v71_bench/thesis_skill_test_20260905/benchmarks/20260905T091004_hhm17a2b/benchmark.json`
-- Real Chapter 4 verification: `/Users/lzhs/Desktop/wordrev_v71_bench/thesis_ch4_test_20260905/run/verification.json`
-- Full-thesis field verification: `/Users/lzhs/Desktop/wordrev_v71_bench/thesis_full_test_20260905/run/verification.json`
-- Chapter-batch verification: `/Users/lzhs/Desktop/wordrev_v71_bench/thesis_batch_test_20260905/run/chapter_batch_manifest.json`
+The original workstation-specific receipts are retained in the owner's private
+archive. They are historical local measurements, not artifacts shipped here or
+acceptance of later versions. Use the current release's tests and a separately
+scoped native fixture when measuring a new implementation.

@@ -1,3 +1,7 @@
+## 0.1.0.dev3 — 2026-09-26
+
+Integrate prior rendering/table regression coverage without reverting current Word locking, equation semantics, field-refresh or RUC profile 1.1.0. Document root/path and source-version boundaries.
+
 # Changelog
 
 ## 0.1.0.dev2 — 2026-09-26

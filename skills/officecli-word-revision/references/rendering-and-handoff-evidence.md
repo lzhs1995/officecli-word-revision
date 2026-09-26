@@ -15,3 +15,16 @@ Native refresh acceptance includes field JSON, visible results, save/reopen and 
 For shared operation use the multi-agent broker's `word-zotero` resource in addition to the native OS lock. A native handoff requires documents=0, windows=0, no modal, no pending, and Zotero currentDoc/currentWindow=false, backed by an original task-bound receipt. -1743 is sender-specific Apple Events denial: record documents UNKNOWN. AX zero windows is not a document count. A diagnostic handoff can be coordinated separately; it must not admit another write. Do not reset TCC, restart Word/Zotero or close foreign documents automatically.
 
 Keep statistical model interpretation and NotebookLM calls in the parent workflow. This tool consumes their evidence, and cannot grant full reproduction or NLM acceptance.
+
+When integrating older patches, compare behavior with the current release before
+merging tests or adapters. The shared Word lock allows the same thread to nest
+adapter/service calls while excluding independent owners; a historical test
+that expects same-thread timeout must not regress this contract. Retain the
+current equation semantic projection, pending-operation recovery, completed
+field-refresh evidence and strict PDF publication postconditions.
+
+Frozen delivery paths can later move under an archive mapping. Readable bytes,
+root-bound executable compatibility and native rendering acceptance are separate.
+Use the parent workflow's manifest-based links and source mappings for delivery,
+without reopening or rebuilding a correctly frozen document merely to repair
+a misspelled chat link.

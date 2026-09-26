@@ -58,6 +58,9 @@ For manuscripts without an explicit venue style guide, read [generic-journal-lay
 
 ## Guardrails
 
+For theme fonts, native PDF glyph checks, inherited story indents and equation metadata,
+read [rendering and handoff evidence](references/rendering-and-handoff-evidence.md).
+
 For macOS PDF export read [mac-word-pdf.md](references/mac-word-pdf.md).
 `scripts/word_pdf_service.py INPUT.docx OUTPUT.pdf` and the thesis adapter share
 one service and OS lock. Render byte-identical copies inside Word's own sandbox,
