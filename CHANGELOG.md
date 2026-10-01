@@ -1,3 +1,11 @@
+## Unreleased — 2026-10-01 documentation
+
+- Separate actual Word release from unaccepted NLM snapshots; link the existing-diagnostic reuse workflow without changing runtime admission or release rules.
+- Record bounded HID admission failures separately from Word occupancy, TCC denial, process completion and unknown NLM remote outcomes; retain original release conditions and unverified concurrency status.
+- Record the user-supplied Word-first/Zotero-second Automation retry, keeping its unverified recovery status distinct from historical TCC rebuild evidence.
+- Document subsequent Refresh persistence with preserved strict metadata failures; distinguish profile selection and file-access prompts from Apple Events denial.
+- Retain the unverified Word+NLM overlap boundary and original delivery/queue ownership. No runtime or installed skill changes.
+
 ## 0.1.0.dev3 — 2026-09-26
 
 Integrate prior rendering/table regression coverage without reverting current Word locking, equation semantics, field-refresh or RUC profile 1.1.0. Document root/path and source-version boundaries.

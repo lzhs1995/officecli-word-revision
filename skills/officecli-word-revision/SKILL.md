@@ -73,7 +73,7 @@ OfficeCLI version policy is separate from Word PDF export.
 When Word shows Zotero controls but the controls do nothing, read [macos-tcc-zotero-word.md](references/macos-tcc-zotero-word.md). Full Disk Access and Automation (Apple Events) are separate permissions. Test the native Zotero route on a safe copy and preserve field-count evidence. If a targeted `tccutil reset AppleEvents` fails, use only backed-up per-user TCC recovery as a last resort; never delete TCC data automatically and never claim that a Terminal `-1743` probe alone diagnoses Zotero.
 
 - In `manuscript_revision`, treat the source DOCX as the only format master. In `thesis_format`, the selected versioned institution profile is the format authority while the source remains the content authority.
-- Serialize all Word, Zotero, and same-file OfficeCLI writes. Microsoft Word automation is protected by a cross-process lock; a lock timeout is a hard failure with owner/path/wait diagnostics, never permission to start a concurrent writer.
+- Serialize native Word automation, Zotero-to-Word citation transactions, and same-file OfficeCLI writes. Independent API reads and unrelated NLM/offline work are not globally serialized by this rule; follow the operation-specific validation in references/operation-concurrency.md. Microsoft Word automation is protected by a cross-process lock; a lock timeout is a hard failure with owner/path/wait diagnostics, never permission to start a concurrent writer.
 - Word helper scripts must address the owned document explicitly and must not bring Word to the foreground with application-level `activate`. A timeout is recorded as return code 124 and terminates the launched process group before the phase fails.
 - Run read-only QA in parallel only after the DOCX hashes are frozen.
 - Preserve Zotero fields as live `ADDIN ZOTERO_ITEM CSL_CITATION` fields; never type an author-year citation as a substitute. Do not use Computer Use, screenshots, or cliclick to operate Zotero or Word. OfficeCLI and zotero-mcp cannot mint ADDIN fields. Create a live bibliography only with Word+Zotero.dotm `ZoteroAddEditBibliography`, then `ZoteroRefresh`. `ZoteroRefresh` cannot create a bibliography from nothing. Accept fields only after a structure audit (`pass==true`), never by grepping `ZOTERO_BIBL`.
@@ -109,3 +109,7 @@ For chapter-scale native closeout and shared Word ownership, read [Native docume
 
 
 For theme fonts, native PDF glyph checks, inherited story indents, equation metadata and shared handoffs, read [rendering-and-handoff-evidence.md](references/rendering-and-handoff-evidence.md).
+
+## 按操作划分跨工具并发
+
+见[操作并发与验证边界](references/operation-concurrency.md)。Word/Zotero 串行指原生应用及引文插件事务，不是所有独立 API、NLM 和离线工作的全局串行命令；复用已验证容量，未测组合先实测。
