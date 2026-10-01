@@ -61,3 +61,9 @@ Zotero 本次保存文件中可核得 21 个引用域、38 次文献项目出现
 协调消息必须绑定原执行者的 workspace/surface UUID。当前工作区查不到目标时，由协作工具从实际工作区树解析唯一目标并重新核身份；不能据此替换执行者、另建队列或重发原生作业。完整定位及部分投递恢复规则由[论文精炼助手协作指南](https://github.com/lzhs1995/thesis-refiner/blob/docs/operation-concurrency-20260930/references/collaboration-and-recovery.md)维护，具体实现归协作工具。
 
 消息失败发生在粘贴前、完整粘贴后或提交后，处理方式不同。保留原 delivery ID 和阶段证据，通过原目标锁与 helper 结算；已完整粘贴的消息不重复粘贴。消息已提交、接收端已消费和 Office 作业终态分别记录。任何消息修复都不能替代 Word 文档、模态、集成状态与原作业的真实归还检查，也不能把原生已归还误记为仍在途。
+
+## 文件管理任务的修订边界
+
+数据来源归档与文稿修订分别受任务范围约束。新复现文件不同于历史采用版本时，先登记差异和采用状态；不得仅因差异存在就调用Word批量替换数值、改结论或重制配套成果。已经生成的独立候选保留，但不自动成为正式稿。
+
+工具维护和并发实测单列交付状态，不自动让已冻结文稿进入新审轮。用户仍要求的验证继续保留待办；未测组合不能因文档发布而被宣布可用。总流程见[文件管理与采用边界](https://github.com/lzhs1995/thesis-refiner/blob/docs/operation-concurrency-20260930/references/file-management-scope.md)。
