@@ -11,7 +11,18 @@ On macOS, Microsoft Word may show the Zotero ribbon while Refresh, Add/Edit Cita
 3. Treat a Terminal-to-Word `osascript` `-1743` result as evidence about the Terminal sender only.
 4. A valid route must produce genuine `ZOTERO_ITEM` and `ZOTERO_BIBL` fields; a visible ribbon or plain bibliography text is insufficient.
 
-## Recovery when `tccutil` cannot reset the entry
+## Authorized application-order retry
+
+Before database recovery, use the user's authorized application-order retry when the actual symptom is a Zotero→Word Automation denial. One coordinator handles the shared applications and preserves existing documents and in-flight operations before attempting a normal close:
+
+1. Close Word and Zotero at their confirmed safe boundary.
+2. Start Word first, then Zotero.
+3. Invoke Zotero Add/Edit Citation from Word on the task's safe copy. If macOS presents the corresponding Automation authorization dialog, accept it through the authorized native automation route.
+4. Verify the completed citation operation, save, close, reopen, and inspect real fields and displayed results.
+
+This order is the user's supplied recovery procedure; the current maintenance run has not reproduced an Automation denial and has not verified this retry as a new successful recovery. Do not manufacture a denial, reset permissions for a test, or ask the user to repeat authorization already granted. A dialog granting Word access to a particular file is a different permission boundary. A missing profile, `-1712` timeout or macro return alone does not establish TCC failure.
+
+## Last-resort per-user database recovery
 
 If a targeted command such as `tccutil reset AppleEvents org.zotero.zotero` fails, the per-user TCC database may be stale, permission-corrupted, or inconsistent. Preserve a backup and record the operation before using the manual recovery documented by the user:
 
