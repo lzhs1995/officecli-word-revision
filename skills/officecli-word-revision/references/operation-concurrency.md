@@ -87,3 +87,5 @@ Word 排队不等于整项研究暂停。调度按实际冲突对象划分，而
 并行NLM分支在本地接收上限停止后，原查询远端终态仍未知；原status/history的HTTP 200与空结果不足以接受或释放原查询。执行会话的401/额度耗尽又是另一故障，不能解释为Word权限问题，也不授权换会话重发。完整网络与认证处置见[并发与恢复边界](https://github.com/lzhs1995/thesis-refiner/blob/docs/operation-concurrency-20260930/references/operation-concurrency.md)。
 
 历史Word保存/重开/PDF和后续22引文域、1书目域、24条目的持久化证据保持原范围。上述新观察没有新增任务级Refresh、真实TCC恢复或Word+NLM重叠通过；文档补录不改变现役执行器与释放条件。
+
+原Word作业真实归还后，NLM仍可能只有未接纳的断流正文快照。分别记录两项结果；不要因Word已释放就接管或重发NLM，也不要因快照可读就宣称组合通过。后继者优先核收原执行者已有解析，避免重复解压和解析；具体证据层次见[复用已有断流诊断](https://github.com/lzhs1995/thesis-refiner/blob/docs/operation-concurrency-20260930/references/operation-concurrency.md#复用已有断流诊断2026-10-01)。

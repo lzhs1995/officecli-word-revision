@@ -1,5 +1,6 @@
 ## Unreleased — 2026-10-01 documentation
 
+- Separate actual Word release from unaccepted NLM snapshots; link the existing-diagnostic reuse workflow without changing runtime admission or release rules.
 - Record bounded HID admission failures separately from Word occupancy, TCC denial, process completion and unknown NLM remote outcomes; retain original release conditions and unverified concurrency status.
 - Record the user-supplied Word-first/Zotero-second Automation retry, keeping its unverified recovery status distinct from historical TCC rebuild evidence.
 - Document subsequent Refresh persistence with preserved strict metadata failures; distinguish profile selection and file-access prompts from Apple Events denial.
