@@ -31,6 +31,15 @@ P_BOOLEAN = {
 }
 REVISION = {qn("w:" + tag) for tag in
             ("rPrChange", "pPrChange", "ins", "del", "moveFrom", "moveTo")}
+R_BOOLEAN = {qn("w:" + tag) for tag in (
+    "b", "bCs", "i", "iCs", "caps", "smallCaps", "strike", "dstrike",
+    "outline", "shadow", "emboss", "imprint", "noProof", "snapToGrid",
+    "vanish", "webHidden", "rtl", "cs", "specVanish", "oMath",
+)}
+R_TOGGLE = {qn("w:" + tag) for tag in (
+    "b", "bCs", "i", "iCs", "caps", "smallCaps", "strike", "dstrike",
+    "outline", "shadow", "emboss", "imprint", "vanish",
+)}
 
 
 class SourceRoleError(ValueError):
@@ -118,6 +127,23 @@ def _tokens(run):
 
 def accepted_paragraphs(document):
     result = []
+    # Schema 1.0 selects body-level paragraphs. Nested labels cannot silently
+    # fall through to generic table/body typography without a role binding.
+    from manuscript_format import text
+    body = document.element.body
+    for paragraph in body.iter(qn("w:p")):
+        if paragraph.getparent() is body or not _visible(paragraph):
+            continue
+        if paragraph.find("w:pPr/w:rPr/w:del", paragraph.nsmap) is not None or (
+            paragraph.find("w:pPr/w:rPr/w:moveFrom", paragraph.nsmap) is not None
+        ):
+            if any(_tokens(r) for r in paragraph.xpath(".//w:r") if _visible(r)):
+                raise SourceRoleError("SOURCE_ROLE_PARAGRAPH_MERGE_UNSUPPORTED")
+            continue
+        content = text(paragraph).strip()
+        if any(label.match(content) for label in LABELS.values()) or BIB_HEADING.fullmatch(content):
+            scope = "TABLE" if any(a.tag == qn("w:tc") for a in paragraph.iterancestors()) else "NESTED"
+            raise SourceRoleError(f"SOURCE_ROLE_LABEL_IN_{scope}_UNSUPPORTED")
     for raw_index, paragraph in enumerate(document.element.body.findall(qn("w:p"))):
         if not _visible(paragraph):
             continue
@@ -183,23 +209,98 @@ def _paragraph_state(document, paragraph):
 
 
 def _mark_state(document, paragraph):
-    from manuscript_format import effective_run
     run = OxmlElement("w:r")
     mark = paragraph.find("w:pPr/w:rPr", paragraph.nsmap)
     if mark is not None:
         run.append(copy.deepcopy(mark))
-    return effective_run(document, paragraph, run)
+    return _run_state(document, paragraph, run)
+
+
+def _rpr_layers(document, paragraph, run):
+    """Defaults, paragraph/character style chains, then direct formatting."""
+    styles = {s.style_id: s.element for s in document.styles}
+    yield document.styles.element.find(
+        "w:docDefaults/w:rPrDefault/w:rPr", document.styles.element.nsmap), False
+
+    def chain(sid, seen):
+        if not sid or sid in seen or sid not in styles:
+            return
+        seen.add(sid)
+        style = styles[sid]
+        base = style.find(qn("w:basedOn"))
+        if base is not None:
+            yield from chain(base.get(qn("w:val")), seen)
+        yield style.find(qn("w:rPr")), True
+
+    from manuscript_format import style_id
+    default = next((s.style_id for s in document.styles
+                    if s.element.get(qn("w:default")) == "1"
+                    and s.element.get(qn("w:type")) == "paragraph"), None)
+    yield from chain(style_id(paragraph) or default, set())
+    character = run.find("w:rPr/w:rStyle", run.nsmap)
+    if character is not None:
+        yield from chain(character.get(qn("w:val")), set())
+    yield run.find(qn("w:rPr")), False
+
+
+def _property_state(element):
+    # Keep full qualified attributes and extension children, not only w:val.
+    # XML indentation, namespace prefixes and attribute order are not format.
+    return {
+        "tag": element.tag,
+        "attrs": dict(sorted(element.attrib.items())),
+        "text": element.text if element.text and element.text.strip() else None,
+        "children": [_property_state(child) for child in element
+                     if child.tag not in REVISION],
+    }
+
+
+def _run_state(document, paragraph, run):
+    """Check every effective run property, including unknown extensions.
+
+    On/off spellings are equivalent; style toggle properties toggle the inherited
+    state, while direct on/off values are absolute. Fonts/languages inherit their
+    individual attributes. Other complex properties replace the inherited value.
+    Conditional table roles are unsupported by the body-coordinate contract.
+    """
+    values = {tag: {"on": False, "attrs": {}} for tag in R_BOOLEAN}
+    for pr, style_layer in _rpr_layers(document, paragraph, run):
+        if pr is None:
+            continue
+        seen = set()
+        for child in pr:
+            tag = child.tag
+            if tag in REVISION or tag == qn("w:rStyle"):
+                continue
+            if tag in seen:
+                raise SourceRoleError("SOURCE_ROLE_DUPLICATE_RUN_PROPERTY")
+            seen.add(tag)
+            if tag in R_BOOLEAN:
+                spelling = child.get(qn("w:val"), "1").lower()
+                if spelling not in {"1", "true", "on", "0", "false", "off"}:
+                    raise SourceRoleError("SOURCE_ROLE_INVALID_ONOFF_PROPERTY")
+                on = spelling in {"1", "true", "on"}
+                if style_layer and tag in R_TOGGLE:
+                    on = not values[tag]["on"] if on else values[tag]["on"]
+                values[tag] = {"on": on, "attrs": {
+                    k: v for k, v in child.attrib.items() if k != qn("w:val")}}
+            elif tag in {qn("w:rFonts"), qn("w:lang")}:
+                value = _property_state(child)
+                value["attrs"] = dict(values.get(tag, {}).get("attrs", {}), **value["attrs"])
+                values[tag] = value
+            else:
+                values[tag] = _property_state(child)
+    return values
 
 
 def _stream(document, paragraph):
-    from manuscript_format import effective_run
     result = []
     for run in paragraph.xpath(".//w:r"):
         if _visible(run):
             tokens = _tokens(run)
             if tokens:
                 result.append({"run": run, "tokens": tokens,
-                               "format": effective_run(document, paragraph, run)})
+                               "format": _run_state(document, paragraph, run)})
     return result
 
 
@@ -271,6 +372,15 @@ def _check_source(contract, document):
             text(paragraphs[heading][1]).strip()
         ):
             raise SourceRoleError("SOURCE_ROLE_BIBLIOGRAPHY_BOUNDARY_INVALID")
+        # A selector cannot shorten the bibliography simply by shrinking end.
+        # Trailing blanks, a real next heading, or a paragraph section break
+        # delimit it; ordinary non-empty trailing entries do not.
+        tail = next((i for i in range(end, len(paragraphs))
+                     if text(paragraphs[i][1]).strip()), None)
+        section_end = paragraphs[end - 1][1].find(
+            "w:pPr/w:sectPr", paragraphs[end - 1][1].nsmap) is not None
+        if tail is not None and not section_end and paragraph_role(document, paragraphs[tail][1]) != "heading":
+            raise SourceRoleError("SOURCE_ROLE_BIBLIOGRAPHY_END_TRUNCATES_CONTENT")
         expected = {i for i in range(heading + 1, end) if text(paragraphs[i][1]).strip()}
         if not expected or bib != expected:
             raise SourceRoleError("SOURCE_ROLE_BIBLIOGRAPHY_COVERAGE_MISMATCH")
@@ -346,7 +456,7 @@ class Binding:
                 "paragraphs_checked": len(checked), "checked": checked, "errors": errors}
 
     def apply(self, document, recorder):
-        from manuscript_format import effective_run, text
+        from manuscript_format import text
         for raw_index, target in self.targets.items():
             p, source_p = target["paragraph"], target["source"]
             actual = _stream(document, p)
@@ -393,7 +503,7 @@ class Binding:
                 else:
                     runs = [run]
                 for piece, (_, want) in zip(runs, groups):
-                    if effective_run(document, p, piece) != want["format"]:
+                    if _run_state(document, p, piece) != want["format"]:
                         reference = want["run"].find(qn("w:rPr"))
                         recorder.edit(piece, "w:rPr", lambda pr, ref=reference: _restore_rpr(pr, ref),
                                       f"p:{raw_index}:source_run")

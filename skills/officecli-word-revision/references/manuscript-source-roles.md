@@ -52,3 +52,22 @@ creating run directories. Every phase rechecks its immutable input pins before
 cache reuse; the role helper and both schemas participate in implementation
 fingerprints. A new helper is not proof of native Word acceptance, final PDF
 layout or NotebookLM review.
+
+The dev5 checks retain all effective run properties, full qualified attributes
+and extension children. This includes strike, caps, hidden text, highlighting,
+shading fills and underline colors, plus paragraph-mark formatting. Attribute
+order and equivalent on/off spellings do not cause failures; style toggles are
+resolved before per-position comparison. A changed inherited style that direct
+source properties cannot restore is refused as unresolved rather than silently
+accepted.
+
+Schema 1.0 does not select table-cell, content-control or text-box paragraphs.
+An accepted abstract, keyword or bibliography label in those containers is
+explicitly refused, in the source or candidate. A reviewed coordinate extension
+is needed for such manuscripts. Entirely deleted labels are not accepted-view
+coverage.
+
+The bibliography exclusive end must also leave no ordinary nonempty tail before
+the next shared heading or actual paragraph section break. Trailing blanks are
+allowed. Decreasing the end index and dropping real trailing entries from the
+sidecar fails even when every remaining selected entry matches its source.

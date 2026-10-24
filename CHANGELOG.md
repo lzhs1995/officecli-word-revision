@@ -1,3 +1,10 @@
+## 0.1.0.dev5 — 2026-10-24
+
+- F66-1: source-bound roles compare every effective run property and qualified attribute, including strike/caps/highlight/shading, underline color and unknown extensions. Style toggle semantics and equivalent on/off spellings are preserved.
+- F66-2: schema 1.0 body selectors explicitly refuse accepted abstract/keyword/bibliography labels in table cells or other nested containers; deleted labels do not supply coverage.
+- F66-3: bibliography end cannot exclude ordinary nonempty trailing entries. Trailing blanks, a next shared heading or an actual paragraph section break provide explicit boundaries.
+- Role-only apply remains minimal; shared body/table/caption/object gates and native Word/Zotero/PDF acceptance stay separate. Focused role tests:30 passed; broader checks are recorded with their own evidence.
+
 ## 0.1.0.dev4 — 2026-10-24
 
 - Add an optional immutable source contract for abstract, keyword and bibliography paragraph roles; retain the existing body, table, caption and object checks.
