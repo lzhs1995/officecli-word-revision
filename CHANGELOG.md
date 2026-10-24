@@ -1,3 +1,10 @@
+## 0.1.0.dev4 — 2026-10-24
+
+- Add an optional immutable source contract for abstract, keyword and bibliography paragraph roles; retain the existing body, table, caption and object checks.
+- Compare accepted-view text/control positions, effective paragraph and paragraph-mark formatting, and per-position run formatting, including complex-script size. Equivalent run segmentation remains valid.
+- Add a role-only apply entry for minimally repaired manuscripts; source/pointer drift fails before adapter loading and every cached phase.
+- Preserve the complete dev3 thesis-integrity, rendered-document QA, Word-locking and native-field safeguards. Offline role checks do not replace Zotero Refresh, native Word PDF or scientific acceptance.
+
 ## 0.1.0.dev3 — 2026-09-26
 
 Integrate prior rendering/table regression coverage without reverting current Word locking, equation semantics, field-refresh or RUC profile 1.1.0. Document root/path and source-version boundaries.

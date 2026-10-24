@@ -18,6 +18,14 @@ Use the `wordrev` CLI for document production. First identify the scenario; do n
 
 Use separate sequential jobs when both are needed: finish and approve content revisions first, then format the accepted document.
 
+When a manuscript's accepted abstract, keywords or bibliography has specialized
+formatting, use the optional [source-bound paragraph roles](references/manuscript-source-roles.md)
+contract. It checks the exact content source and each selected paragraph's
+formatting; the shared body, table, caption and object checks still apply.
+Use its role-only apply entry for an already accepted minimal layout repair.
+Source-bound selected text remains immutable; real Zotero Refresh changes need
+a separately reviewed binding before final native Word/PDF acceptance.
+
 For whole-thesis integration, read [全文统稿指南](references/full-thesis-formatting.md) and
 [规则来源矩阵](references/ruc-rule-sources.json). Distinguish the supplied institution snapshot,
 project requirements and engineering choices. A new page does not by itself require a new section;

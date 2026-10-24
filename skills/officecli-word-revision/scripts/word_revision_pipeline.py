@@ -328,6 +328,10 @@ class Pipeline:
         if any(key in self.job for key in ("thesis_integrity", "rendered_document_qa")):
             paths.extend([SCRIPT_DIR / "thesis_integrity.py", SCRIPT_DIR / "rendered_document_qa.py",
                           SCRIPT_DIR.parent / "references/thesis-integrity.schema.json"])
+        if "paragraph_roles" in self.job.get("format_contract", {}):
+            paths.extend([SCRIPT_DIR / "manuscript_source_roles.py",
+                          SKILL_DIR / "references/manuscript-source-roles.schema.json",
+                          SKILL_DIR / "references/job.schema.json"])
         if hasattr(self.adapter, "dependency_paths"):
             paths.extend(Path(value) for value in self.adapter.dependency_paths())
         return {str(path): sha256(path) for path in paths if path.is_file()}
@@ -350,6 +354,11 @@ class Pipeline:
                 str(Path(value).resolve() if Path(value).is_absolute() else (base / value).resolve())
                 for value in self.job["sources"]
             ]
+        format_contract = self.job.get("format_contract")
+        role_pointer = format_contract.get("paragraph_roles") if isinstance(format_contract, dict) else None
+        if isinstance(role_pointer, dict) and isinstance(role_pointer.get("path"), str):
+            if not Path(role_pointer["path"]).is_absolute():
+                role_pointer["path"] = str((base / role_pointer["path"]).resolve())
 
     def _validate_job(self) -> None:
         for key in ("thesis_integrity", "rendered_document_qa"):
@@ -388,6 +397,16 @@ class Pipeline:
             required_paths.append("content_source")
             if "publication_layout" in self.job:
                 normalize_publication_layout_policy(self.job["publication_layout"])
+            if "format_contract" in self.job:
+                contract = self.job["format_contract"]
+                required_format = {"body", "table", "caption", "expected_objects"}
+                if not isinstance(contract, dict) or not required_format <= contract.keys() or (
+                    contract.keys() - required_format - {"paragraph_roles"}
+                ):
+                    raise ValueError("format_contract requires known typography/object fields")
+                if "paragraph_roles" in contract:
+                    from manuscript_source_roles import load_bound_source
+                    load_bound_source(contract["paragraph_roles"], source_path=self.job["content_source"])
         else:
             if "publication_layout" in self.job:
                 raise ValueError("publication_layout is only valid for manuscript_revision")
@@ -777,6 +796,12 @@ class Pipeline:
                 from thesis_integrity import load_bound_contract
                 load_bound_contract(self.job[key], validate=key == "thesis_integrity")
                 hashes[key] = self.job[key]["sha256"]
+        if "paragraph_roles" in self.job.get("format_contract", {}):
+            from manuscript_source_roles import load_bound_source
+            pointer = self.job["format_contract"]["paragraph_roles"]
+            contract, _, _, _ = load_bound_source(pointer, source_path=self.job["content_source"])
+            hashes["paragraph_roles"] = pointer["sha256"]
+            hashes["paragraph_roles_source"] = contract["source"]["sha256"]
         return hashes
 
     def _export_pdf(self, source: Path, output: Path, label: str) -> None:
