@@ -8,6 +8,17 @@
     {"$ref": "#/$defs/thesisJob"}
   ],
   "$defs": {
+    "sourceRolesPointer": {
+      "type": "object",
+      "description": "Immutable source-role sidecar; specialized paragraphs remain checked against their exact source.",
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "bytes": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "additionalProperties": false
+    },
     "statistics": {
       "type": "object",
       "required": ["allow_execution", "consume_manifest_only"],
@@ -155,6 +166,7 @@
                 "body": {"type": "object"},
                 "table": {"type": "object"},
                 "caption": {"type": "object"},
+                "paragraph_roles": {"$ref": "#/$defs/sourceRolesPointer"},
                 "expected_objects": {"type": "integer", "minimum": 1}
               },
               "additionalProperties": false

@@ -12,6 +12,11 @@ Use `scenario=manuscript_revision` when the requested outcome is a native Word r
 
 Schema 1.0 jobs remain supported. New jobs should use schema 2.0 and declare the scenario explicitly.
 
+For audited abstract, keyword and bibliography formatting, use the optional
+[source-bound role contract](manuscript-source-roles.md). These paragraphs are
+checked against the exact content source, while shared body/table/object gates
+continue. Do not create a style-name exemption or omit reported errors.
+
 Initialize a new project after preparing its content source and adapter:
 
 ```bash

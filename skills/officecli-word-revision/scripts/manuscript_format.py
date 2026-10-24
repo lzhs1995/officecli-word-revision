@@ -56,16 +56,16 @@ def effective_run(document,p,r):
     The formatter writes explicit properties, so conditional table styles may
     not override this contract. Missing explicit run properties are QA failures.
     """
-    vals={'b':False,'bCs':False}
+    vals={'b':False,'bCs':False,'i':False,'iCs':False}
     def apply(pr):
         if pr is None:return
         f=pr.find(qn('w:rFonts'))
         if f is not None:
-            for key in ['ascii','hAnsi','eastAsia','cs']:
+            for key in ['ascii','hAnsi','eastAsia','cs','asciiTheme','hAnsiTheme','eastAsiaTheme','cstheme']:
                 if f.get(qn('w:'+key)) is not None:vals[key]=f.get(qn('w:'+key))
-        for key in ['sz','szCs','b','bCs','vertAlign']:
+        for key in ['sz','szCs','b','bCs','i','iCs','vertAlign','u','color','spacing','kern','position']:
             n=pr.find(qn('w:'+key))
-            if n is not None:vals[key]=bool_value(n) if key in ['b','bCs'] else n.get(qn('w:val'))
+            if n is not None:vals[key]=bool_value(n) if key in ['b','bCs','i','iCs'] else n.get(qn('w:val'))
     styles={s.style_id:s.element for s in document.styles}
     def chain(sid,seen=None):
         seen=set() if seen is None else seen
@@ -195,9 +195,24 @@ def _pformat(pr,role,policy):
     get(pr,'w:jc').set(qn('w:val'),'center' if role=='caption' else 'left' if role=='note' else 'both')
     mark=get(pr,'w:rPr');set_fonts(mark,policy,False if role in ['caption','note'] else None)
 
+def apply_source_roles(d,contract,*,tracked=False,author='Codex',date='2026-09-07T00:00:00Z'):
+    """Restore only bound specialized paragraphs; full final audit still applies."""
+    if 'paragraph_roles' not in contract:
+        raise ValueError("apply_source_roles requires the immutable paragraph_roles pointer")
+    from manuscript_source_roles import Binding
+    rec=Recorder(d,author,date,tracked)
+    Binding(contract['paragraph_roles'],d).apply(d,rec)
+    return rec.rows
+
 def apply_contract(d,contract,publication,*,tracked=False,author='Codex',date='2026-09-07T00:00:00Z'):
     policy=normalize_publication_layout_policy(publication);rec=Recorder(d,author,date,tracked)
+    roles=None
+    if 'paragraph_roles' in contract:
+        from manuscript_source_roles import Binding
+        roles=Binding(contract['paragraph_roles'],d)
+        roles.apply(d,rec)
     for i,p in enumerate(d.element.body.findall(qn('w:p'))):
+        if roles and i in roles.targets:continue
         if not visible(p) or not text(p).strip():continue
         role=paragraph_role(d,p)
         if role not in ['body','caption','note']:continue
@@ -277,6 +292,11 @@ def object_registry(d,publication):
 
 def audit_contract(path,contract,publication):
     d=Document(path);errors=[];checked=[];policy=normalize_publication_layout_policy(publication)
+    roles=None;role_qa=None
+    if 'paragraph_roles' in contract:
+        from manuscript_source_roles import Binding
+        roles=Binding(contract['paragraph_roles'],d)
+        role_qa=roles.audit(d);errors.extend(role_qa['errors'])
     def runcheck(p,r,fmt,loc,plain=False):
         v=effective_run(d,p,r);want={'ascii':fmt['latin'],'hAnsi':fmt['latin'],'eastAsia':fmt['east_asia'],'sz':str(round(fmt['size_pt']*2))}
         if plain:want.update(b=False,bCs=False)
@@ -284,6 +304,10 @@ def audit_contract(path,contract,publication):
             if v.get(k)!=w:errors.append({'location':loc,'rule':k,'expected':w,'actual':v.get(k)})
         checked.append(loc)
     for i,p in enumerate(d.element.body.findall(qn('w:p'))):
+        if roles and i in roles.targets:
+            for j,r in enumerate(p.xpath('.//w:r[w:t]')):
+                if visible(r):checked.append(f'p:{i}:r:{j}:source_role')
+            continue
         role=paragraph_role(d,p)
         if role not in ['body','caption','note'] or not visible(p) or not text(p).strip():continue
         fmt=contract['caption' if role=='caption' else 'body']
@@ -336,5 +360,5 @@ def audit_contract(path,contract,publication):
     for o in objects:
         if not o['position_ok']:errors.append({'rule':'caption_position','object':o})
     if len(set(caps))!=len(caps):errors.append({'rule':'duplicate_or_missing_caption'})
-    cov=cellset==indset==alignset
-    return {'all_pass':not errors and cov,'coverage_ok':cov,'table_cells':len(cellset),'runs_checked':len(checked),'objects':objects,'errors':errors,'scope':'accepted-view typography, effective run fonts, explicit unit/character zero indents, literal alignment, object-caption pairing'}
+    cov=cellset==indset==alignset and (role_qa is None or role_qa['coverage_ok'])
+    return {'all_pass':not errors and cov,'coverage_ok':cov,'table_cells':len(cellset),'runs_checked':len(checked),'objects':objects,'errors':errors,'source_roles':role_qa,'scope':'accepted-view typography, source-bound paragraph/run roles, effective run fonts, explicit unit/character zero indents, literal alignment, object-caption pairing'}
