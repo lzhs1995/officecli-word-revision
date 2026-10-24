@@ -4,6 +4,7 @@
 - F66-2: schema 1.0 body selectors explicitly refuse accepted abstract/keyword/bibliography labels in table cells or other nested containers; deleted labels do not supply coverage.
 - F66-3: bibliography end cannot exclude ordinary nonempty trailing entries. Trailing blanks, a next shared heading or an actual paragraph section break provide explicit boundaries.
 - Role-only apply remains minimal; shared body/table/caption/object gates and native Word/Zotero/PDF acceptance stay separate. Focused role tests:30 passed; broader checks are recorded with their own evidence.
+- Independent review:11 new cases passed and an exact accepted manuscript remained a zero-change in-memory apply. Nonblocking limits remain explicit: a section break ends bibliography coverage; theme/numbering font resolution and native toggle rendering remain outside this check; nested paragraph-mark merges can conservatively refuse the document.
 
 ## 0.1.0.dev4 — 2026-10-24
 
