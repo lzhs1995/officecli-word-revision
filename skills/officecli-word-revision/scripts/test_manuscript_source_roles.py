@@ -349,6 +349,155 @@ class SourceRoleTests(unittest.TestCase):
                 run()
             self.assertEqual(len(calls), 2)
 
+    def refresh_source(self, d):
+        d.save(self.source)
+        self.sidecar["source"] = pin(self.source)
+        self.sidecar["paragraph_count"] = len(d.paragraphs)
+        self.write_sidecar()
+
+    def test_every_source_run_boolean_and_complex_attribute_change_is_detected(self):
+        changes = [
+            ("strike", {"val": "1"}), ("dstrike", {"val": "1"}),
+            ("caps", {"val": "1"}), ("smallCaps", {"val": "1"}),
+            ("outline", {"val": "1"}), ("shadow", {"val": "1"}),
+            ("emboss", {"val": "1"}), ("imprint", {"val": "1"}),
+            ("vanish", {"val": "1"}), ("webHidden", {"val": "1"}),
+            ("rtl", {"val": "1"}), ("cs", {"val": "1"}),
+            ("highlight", {"val": "yellow"}),
+            ("shd", {"val": "clear", "fill": "FFFF00"}),
+            ("u", {"val": "single", "color": "FF0000"}),
+            ("lang", {"eastAsia": "ja-JP"}),
+        ]
+        for tag, attrs in changes:
+            with self.subTest(property=tag):
+                d = self.good()
+                pr = get(d.paragraphs[2].runs[0]._r, "w:rPr")
+                prop = get(pr, "w:" + tag)
+                for name, value in attrs.items():
+                    prop.set(qn("w:" + name), value)
+                result = self.audit(d)
+                self.assertFalse(result["all_pass"])
+                self.assertTrue(any(e["rule"] == "source_role_run_format" for e in result["errors"]))
+
+    def test_shading_and_underline_keep_attributes_beyond_val(self):
+        d = Document(self.source)
+        pr = get(d.paragraphs[2].runs[0]._r, "w:rPr")
+        get(pr, "w:shd").set(qn("w:val"), "clear")
+        get(pr, "w:shd").set(qn("w:fill"), "FFFF00")
+        get(pr, "w:u").set(qn("w:val"), "single")
+        get(pr, "w:u").set(qn("w:color"), "FF0000")
+        self.refresh_source(d)
+        for prop, attr, value in [("shd", "fill", "00FF00"), ("u", "color", "0000FF")]:
+            with self.subTest(property=prop):
+                candidate = self.good()
+                get(candidate.paragraphs[2].runs[0]._r.rPr, "w:" + prop).set(qn("w:" + attr), value)
+                self.assertFalse(self.audit(candidate)["all_pass"])
+
+    def test_unknown_run_extension_is_checked_and_direct_changes_can_be_restored(self):
+        from lxml import etree
+        d = self.good()
+        extension = etree.Element("{urn:source-role-future-format}effect")
+        extension.set("strength", "3")
+        get(d.paragraphs[2].runs[0]._r, "w:rPr").append(extension)
+        self.assertFalse(self.audit(d)["all_pass"])
+        edits = apply_source_roles(d, self.contract)
+        self.assertTrue(edits)
+        self.assertTrue(self.audit(d)["all_pass"])
+
+    def test_equivalent_false_spellings_and_style_toggles_keep_effective_format(self):
+        d = self.good()
+        get(d.paragraphs[2].runs[0]._r.rPr, "w:strike").set(qn("w:val"), "off")
+        self.assertTrue(self.audit(d)["all_pass"])
+        d = Document(self.source)
+        get(get(d.styles["Abstract"].element, "w:rPr"), "w:strike").set(qn("w:val"), "1")
+        char = d.styles.add_style("StrikeToggle", WD_STYLE_TYPE.CHARACTER)
+        get(get(char.element, "w:rPr"), "w:strike").set(qn("w:val"), "true")
+        get(d.paragraphs[2].runs[0]._r.rPr, "w:rStyle").set(qn("w:val"), char.style_id)
+        self.refresh_source(d)
+        candidate = self.good()
+        pr = candidate.paragraphs[2].runs[0]._r.rPr
+        pr.remove(pr.find(qn("w:rStyle")))
+        get(pr, "w:strike").set(qn("w:val"), "false")
+        self.assertTrue(self.audit(candidate)["all_pass"])
+
+    def test_inherited_and_paragraph_mark_effects_are_detected(self):
+        for scope in ["style", "mark"]:
+            with self.subTest(scope=scope):
+                d = self.good()
+                pr = get(d.styles["Abstract"].element, "w:rPr") if scope == "style" else (
+                    get(get(d.paragraphs[2]._p, "w:pPr"), "w:rPr"))
+                get(pr, "w:caps").set(qn("w:val"), "1")
+                self.assertFalse(self.audit(d)["all_pass"])
+
+    def test_duplicate_or_invalid_onoff_run_properties_are_refused(self):
+        for case in ["duplicate", "invalid"]:
+            with self.subTest(case=case):
+                d = self.good()
+                pr = d.paragraphs[2].runs[0]._r.rPr
+                get(pr, "w:strike").set(qn("w:val"), "1" if case == "duplicate" else "not-a-boolean")
+                if case == "duplicate":
+                    pr.append(OxmlElement("w:strike"))
+                with self.assertRaisesRegex(SourceRoleError, "DUPLICATE_RUN_PROPERTY|INVALID_ONOFF"):
+                    self.audit(d)
+
+    def test_table_cell_labels_fail_with_an_explicit_unsupported_coordinate(self):
+        for label in ["摘要：表格摘要", "关键词：表格词", "参考文献"]:
+            with self.subTest(label=label):
+                d = Document(self.source)
+                d.tables[0].cell(0, 0).paragraphs[0].text = label
+                self.refresh_source(d)
+                with self.assertRaisesRegex(SourceRoleError, "LABEL_IN_TABLE_UNSUPPORTED"):
+                    load_bound_source(self.contract["paragraph_roles"])
+        # A new nested label in the candidate is refused as well.
+        self.refresh_source(role_fixture())
+        d = self.good()
+        d.tables[0].cell(0, 0).paragraphs[0].text = "关键词：后加"
+        with self.assertRaisesRegex(SourceRoleError, "LABEL_IN_TABLE_UNSUPPORTED"):
+            self.audit(d)
+
+    def test_deleted_table_label_does_not_spoof_accepted_role_coverage(self):
+        d = Document(self.source)
+        d.tables[0].cell(0, 0).paragraphs[0].text = "摘要：已删除"
+        row = d.tables[0].rows[0]._tr
+        get(row, "w:trPr").append(OxmlElement("w:del"))
+        self.refresh_source(d)
+        load_bound_source(self.contract["paragraph_roles"])
+
+    def test_other_nested_label_coordinates_are_not_silently_skipped(self):
+        d = Document(self.source)
+        sdt = OxmlElement("w:sdt")
+        content = OxmlElement("w:sdtContent")
+        p = OxmlElement("w:p")
+        r = OxmlElement("w:r")
+        t = OxmlElement("w:t")
+        t.text = "摘要：内容控件"
+        r.append(t); p.append(r); content.append(p); sdt.append(content)
+        d.element.body.insert(1, sdt)
+        self.refresh_source(d)
+        with self.assertRaisesRegex(SourceRoleError, "LABEL_IN_NESTED_UNSUPPORTED"):
+            load_bound_source(self.contract["paragraph_roles"])
+
+    def test_bibliography_end_cannot_hide_a_real_trailing_entry(self):
+        self.sidecar["bibliography"]["end_index"] = 6
+        self.sidecar["entries"] = [e for e in self.sidecar["entries"] if e["index"] != 6]
+        self.write_sidecar()
+        with self.assertRaisesRegex(SourceRoleError, "END_TRUNCATES_CONTENT"):
+            load_bound_source(self.contract["paragraph_roles"])
+
+    def test_bibliography_tail_allows_blanks_or_a_real_next_heading(self):
+        load_bound_source(self.contract["paragraph_roles"])
+        d = Document(self.source)
+        d.add_paragraph("附录 A", style="Heading 1")
+        d.add_paragraph("Following section text.")
+        self.refresh_source(d)
+        load_bound_source(self.contract["paragraph_roles"])
+        # An ordinary non-empty tail, after any blanks, is not a boundary.
+        d.paragraphs[8].style = d.styles["Normal"]
+        d.paragraphs[8].text = "Author C, 2022. Third title."
+        self.refresh_source(d)
+        with self.assertRaisesRegex(SourceRoleError, "END_TRUNCATES_CONTENT"):
+            load_bound_source(self.contract["paragraph_roles"])
+
     def test_schema_accepts_only_the_narrow_role_pointer(self):
         import jsonschema
         schema = json.loads((Path(__file__).resolve().parent.parent / "references/job.schema.json").read_text())

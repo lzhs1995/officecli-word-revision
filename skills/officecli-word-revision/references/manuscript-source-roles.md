@@ -52,3 +52,35 @@ creating run directories. Every phase rechecks its immutable input pins before
 cache reuse; the role helper and both schemas participate in implementation
 fingerprints. A new helper is not proof of native Word acceptance, final PDF
 layout or NotebookLM review.
+
+The dev5 checks retain all effective run properties, full qualified attributes
+and extension children. This includes strike, caps, hidden text, highlighting,
+shading fills and underline colors, plus paragraph-mark formatting. Attribute
+order and equivalent on/off spellings do not cause failures; style toggles are
+resolved before per-position comparison. A changed inherited style that direct
+source properties cannot restore is refused as unresolved rather than silently
+accepted.
+
+Schema 1.0 does not select table-cell, content-control or text-box paragraphs.
+An accepted abstract, keyword or bibliography label in those containers is
+explicitly refused, in the source or candidate. A reviewed coordinate extension
+is needed for such manuscripts. Entirely deleted labels are not accepted-view
+coverage.
+
+The bibliography exclusive end must also leave no ordinary nonempty tail before
+the next shared heading or actual paragraph section break. Trailing blanks are
+allowed. Decreasing the end index and dropping real trailing entries from the
+sidecar fails even when every remaining selected entry matches its source.
+
+The declared paragraph section break ends that bibliography range even when
+more entries follow it. A manuscript with a section change inside its
+bibliography therefore needs a separate reviewed range before those later
+entries can claim source-role coverage.
+
+This comparison resolves style layers and run-property declarations. It does
+not resolve theme-font files or numbering-level run properties, and its style
+toggle model has not been validated by native Word rendering. Keep those
+declarations and their source parts stable and retain the final native/PDF
+font checks. A surviving paragraph with a deleted paragraph mark is refused
+throughout the document, including unrelated nested paragraphs; this may
+conservatively reject another manuscript rather than accept uncertain merging.
