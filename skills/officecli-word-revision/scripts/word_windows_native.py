@@ -198,6 +198,10 @@ def run_native(owned, output, evidence, binding, runner=subprocess.run, exit_run
                        '-File', str(script)], capture_output=True, text=True, timeout=420)
     except subprocess.TimeoutExpired:
         return dict(native_started=True, native_closed=False, phase='COM_TIMEOUT', uncertain=True)
+    except (OSError, UnicodeError) as exc:
+        # No valid child return proves that the native dispatch never started.
+        return dict(native_started=True, native_closed=False, phase='COM_DISPATCH_UNKNOWN',
+                    uncertain=True, error=str(exc))
     if not receipt.exists():
         return dict(native_started=True, native_closed=False, phase='COM_RECEIPT_MISSING',
                     child_returncode=proc.returncode, returncode=proc.returncode, uncertain=True)

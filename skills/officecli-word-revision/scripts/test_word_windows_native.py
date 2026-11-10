@@ -89,4 +89,17 @@ class ParentExitTests(unittest.TestCase):
         self.assertTrue(result['uncertain'])
         self.assertEqual(result['phase'], 'PARENT_RECEIPT_WRITE_FAILED')
 
+    def test_child_transport_failure_stays_unknown(self):
+        for exc in [UnicodeError('synthetic decoding failure'), OSError('synthetic dispatch failure')]:
+            with self.subTest(error=type(exc).__name__), tempfile.TemporaryDirectory() as td:
+                def failed_runner(*args, **kwargs):
+                    raise exc
+                def never_observe(*args, **kwargs):
+                    self.fail('No valid child result permits exit acceptance')
+                result = m.run_native('owned.docx', 'out.pdf', td, BIND, failed_runner, never_observe)
+                self.assertTrue(result['native_started'])
+                self.assertFalse(result['native_closed'])
+                self.assertTrue(result['uncertain'])
+                self.assertEqual(result['phase'], 'COM_DISPATCH_UNKNOWN')
+
 if __name__=='__main__':unittest.main(verbosity=2)

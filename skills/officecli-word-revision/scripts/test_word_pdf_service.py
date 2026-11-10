@@ -66,7 +66,8 @@ class WordPdfServiceTest(unittest.TestCase):
             self.assertIn("posix full name of docRef", binding)
             self.assertIn(str(session.owned), binding)
 
-    def _run_fixture(self, failure=None, qa_failure=False, mutate_source=False):
+    def _run_fixture(self, failure=None, qa_failure=False, mutate_source=False,
+                     produce_pdf=True, native_only=False):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
@@ -85,7 +86,7 @@ class WordPdfServiceTest(unittest.TestCase):
                     stages.append(stage)
                     if stage == failure:
                         return subprocess.CompletedProcess(command, 1, '', 'AppleEvent timeout (-1712)')
-                    if stage == 'EXPORT':
+                    if stage == 'EXPORT' and produce_pdf:
                         session.temporary.write_bytes(b'%PDF-test')
                     return subprocess.CompletedProcess(command, 0, 'READY', '')
                 if command[0] == 'pdfinfo':
@@ -106,7 +107,7 @@ class WordPdfServiceTest(unittest.TestCase):
                     return subprocess.CompletedProcess(command, 0, 'Pages: 2\nPage size: 595.28 x 841.89 pts\n', '')
                 return subprocess.CompletedProcess(command, 0, 'First page\fLast page', '')
             session = module.ExportSession(source, output, runner=runner)
-            result = session.export()
+            result = session.export(native_only=native_only)
         return root, session, stages, result
 
     def test_success_closes_before_qa_and_publishes_outside_native_lock(self):
@@ -174,6 +175,43 @@ class WordPdfServiceTest(unittest.TestCase):
             source = Path(tmp) / 's.docx'; source.write_bytes(b'unchanged')
             with self.assertRaisesRegex(ValueError, 'UNKNOWN_WORKER'):
                 module.ExportSession(source, Path(tmp) / 'o.pdf', worker_id='arbitrary-new-instance')
+
+    def test_native_only_freeze_failure_has_nonzero_cli_exit(self):
+        _, session, _, result = self._run_fixture(produce_pdf=False, native_only=True)
+        self.assertTrue(result['native_closed'])
+        self.assertEqual(result['code'], 'NATIVE_CLOSED_QA_FAILED')
+        self.assertFalse(session.frozen_pdf.exists())
+        self.assertFalse((session.evidence / 'native-closed.json').exists())
+        with patch('sys.argv', ['service', 'input.docx', 'out.pdf', '--native-only']), \
+                patch.object(module, 'export_pdf', return_value=result), patch('builtins.print'):
+            self.assertEqual(module.main(), 1)
+
+    def test_native_only_frozen_phase_can_exit_zero_without_qa_pass(self):
+        _, session, _, result = self._run_fixture(native_only=True)
+        self.assertFalse(result['success'])
+        self.assertEqual(result['code'], 'NATIVE_CLOSED_AWAITING_QA')
+        self.assertTrue(session.frozen_pdf.exists())
+        self.assertTrue((session.evidence / 'native-closed.json').exists())
+        with patch('sys.argv', ['service', 'input.docx', 'out.pdf', '--native-only']), \
+                patch.object(module, 'export_pdf', return_value=result), patch('builtins.print'):
+            self.assertEqual(module.main(), 0)
+
+    def test_windows_dispatch_exception_preserves_pending(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'source.docx'; source.write_bytes(b'unchanged')
+            worker = dict(backend='word-com', machine='TEST-WINDOWS', user='fixture-user', session='7')
+            with patch('pathlib.Path.home', return_value=root), \
+                    patch.dict(os.environ, {'LOCALAPPDATA': str(root)}), \
+                    patch('word_workers.resolve_worker', return_value=worker), \
+                    patch('word_windows_native.run_native', side_effect=UnicodeError('synthetic decoding failure')):
+                result = module.ExportSession(source, root / 'out.pdf').export(native_only=True)
+            self.assertFalse(result['native_closed'])
+            self.assertEqual(result['cleanup'], 'PENDING')
+            self.assertEqual(result['failed_stage'], 'NATIVE_DISPATCH_UNKNOWN')
+            pending = root / '.cache/wordrev/word-automation.pending.json'
+            self.assertTrue(pending.exists())
+            self.assertTrue(json.loads(pending.read_text())['native_result']['uncertain'])
 
 
 if __name__ == "__main__":

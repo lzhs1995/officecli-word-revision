@@ -226,7 +226,13 @@ class ExportSession:
                 s = self.source.stat()
                 if (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns) != self.source_identity:
                     raise StageError('PREFLIGHT', 'Source changed while waiting for Word')
-                state = run_native(self.owned, self.temporary, self.evidence, self.worker, self.runner)
+                try:
+                    state = run_native(self.owned, self.temporary, self.evidence, self.worker, self.runner)
+                except Exception as exc:
+                    # A dispatch boundary failure cannot establish whether the
+                    # native host started or closed. Preserve recovery evidence.
+                    state = dict(native_started=True, native_closed=False,
+                                 phase='NATIVE_DISPATCH_UNKNOWN', uncertain=True, error=str(exc))
                 self.result['word_native'] = state
                 if not state.get('native_closed'):
                     if state.get('native_started'):
@@ -325,7 +331,8 @@ def main():
     except Exception as exc:
         result = dict(success=False, code='INVALID_INPUT', error=str(exc))
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    ready = (result.get('success') or (args.native_only and result.get('native_closed')))
+    ready = (result.get('success') or (args.native_only and result.get('native_closed') and
+                                      result.get('code') == 'NATIVE_CLOSED_AWAITING_QA'))
     return 0 if ready and result.get('cleanup') == 'PASS' and result.get('input_unchanged') else 1
 
 
