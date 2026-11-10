@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="210" viewBox="0 0 900 210" role="img" aria-labelledby="title desc">
+<title id="title">Office Word Revision</title><desc id="desc">Edit carefully. Verify in Word. Original project illustration.</desc>
+<rect width="900" height="210" rx="24" fill="#f8fafc"/><rect x="15" y="15" width="195" height="180" rx="20" fill="#0e7490"/>
+<g transform="translate(5 10)"><path d="M66 35h62l24 25v88H66Z" fill="none" stroke="white" stroke-width="5"/><path d="M128 35v27h24M84 82h47M84 99h47M84 116h25" fill="none" stroke="white" stroke-width="5"/><path d="M114 135l10 9 22-23" fill="none" stroke="white" stroke-width="6"/></g>
+<text x="242" y="96" fill="#0f172a" font-family="Arial, Helvetica, sans-serif" font-size="36" font-weight="700">Office Word Revision</text>
+<text x="244" y="136" fill="#475569" font-family="Arial, Helvetica, sans-serif" font-size="22">Edit carefully. Verify in Word.</text>
+</svg>
