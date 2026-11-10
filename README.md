@@ -70,10 +70,20 @@ With a reviewed job and the native prerequisites ready:
 
 - **One native writer per Word/Zotero integration instance.** Agents sharing an instance must use the same coordination and OS lock. Separate output folders or different tool names do not authorize concurrent native writers. Independent frozen-file reading and QA can run in parallel.
 - A timeout or uncertain close retains recovery evidence. Read back the original operation; do not clear pending state, kill another user's application or replay a job merely to obtain a clean status.
-- Native paths have been exercised on **macOS with Microsoft Word**, with task-specific acceptance limits. A complete Windows production workflow has **not been accepted**; isolated experiments do not establish support. Linux is suitable for static and synthetic checks, not native Word rendering.
+- Native paths have been exercised on **macOS with Microsoft Word**, with task-specific acceptance limits. The bounded Windows Word-only PDF worker has also completed one synthetic native export/close/exit lifecycle and separate PDF QA. A complete Windows production workflow, dual-worker performance and the Windows Zotero plugin route have **not been accepted**. Linux is suitable for static and synthetic checks, not native Word rendering.
 - Live Zotero citation/bibliography fields require the Word plugin route. OfficeCLI, library APIs and screenshots cannot substitute for native field creation or refresh. A macro returning does not prove refresh completed.
 - A known native AutoFit path has encountered Word error `-10006`; this documentation update does not establish that it is fixed. Check the relevant native evidence for the version and environment you use.
 - CI uses synthetic tests and packaging checks on Linux/macOS. It does not run licensed Word/Zotero applications or certify research conclusions. The RUC profile is not an official university endorsement.
+
+The PDF service now separates native closure from offline QA. `--native-only`
+retains the frozen PDF and reports `NATIVE_CLOSED_AWAITING_QA`; it does not claim
+full acceptance or external reservation release. Registered worker aliases share
+the existing native lock and pending marker. Windows binds the owned document
+through `Window.Hwnd`, requests normal Quit, and requires a separate read-only
+exit observation after its PowerShell host ends. See [macOS native phases](skills/officecli-word-revision/references/mac-word-pdf.md)
+and [Windows worker evidence](skills/officecli-word-revision/references/windows-word-pdf.md).
+These additions belong to the reviewed worker feature commit; the older runtime
+pin in the installation example does not include them.
 
 ## Version scope
 

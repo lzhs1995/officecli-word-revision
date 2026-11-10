@@ -16,14 +16,14 @@ for output-path authorization; increasing the timeout did not address that wait.
 
 The verified route:
 
-1. Acquire the persistent OS lock at `~/.cache/wordrev/word-automation.lock`.
-2. Copy the frozen DOCX byte-for-byte into a unique run directory under
+1. Claim the exclusive output and copy the frozen DOCX byte-for-byte into a unique run directory under
    `~/Library/Containers/com.microsoft.Word/Data/Documents/wordrev-pdf/`.
-3. Open that copy; bind Word's document by its complete POSIX path.
-4. Export a new PDF inside that same Word container directory.
-5. Validate PDF header, parsing, nonempty text, page count and hashes.
-6. Publish to the requested destination without overwriting an existing file.
-7. Close only the owned document without saving; remove successful staging.
+2. Acquire the persistent OS lock at `~/.cache/wordrev/word-automation.lock`.
+3. Open that copy; bind Word's document by its complete POSIX path and record the actual Word PID/user.
+4. Export a new PDF inside that same Word container directory; close only the owned document without saving.
+5. Freeze the exact native PDF bytes while holding the lock, then release the lock.
+6. Validate PDF header, parsing, nonempty text, page count and hashes outside the native lock.
+7. Publish without overwriting an existing file; remove only this successful run's private staging.
 
 Export does not rewrite the source or refresh Zotero. Unsaved Word edits are not
 implicitly consumed. Freeze/save the candidate before export. Other open Word
@@ -46,6 +46,34 @@ operation, permission denial (`-1743`) and active pagination require different
 recovery. Do not repeat exports, close unrelated documents, kill all Word
 processes, suppress alerts or reset TCC automatically. The service retains
 uncertain staging and a pending recovery marker.
+
+`native_closed=true` and `native-closed.json` establish the owned native phase's
+closure and frozen output, not QA success or external ticket release. A later QA
+failure returns `NATIVE_CLOSED_QA_FAILED` without creating a native pending marker.
+A close failure returns failure, retains the unpublished native file and marks
+pending; no QA or publication is attempted. The result fields and successful
+`EXPORT_PASS` contract remain compatible, but a close failure is no longer
+reported as an export success. `os_lock_wait_seconds` and
+`os_lock_held_seconds` measure only the OS lock. This function does not manage
+the resource broker: `broker_managed=false`, `logical_reservation_seconds=null`.
+Its caller must record reservation acquisition/release and duration separately.
+The optional `on_native_closed` callback runs after lock release and before QA;
+it can invoke an already-authorized outer reconciliation protocol, not infer it.
+
+New jobs may select `--worker-id mac-test|windows-test --worker-registry PATH`.
+Registration binds machine, user, OS session, current-user Word instance and an
+exclusive output root. Unknown workers, alternate lock paths, mismatched identities
+and unverified Zotero routes are rejected. Aliases do not create another native
+lane on the same instance; Word-only and legacy Word/Zotero work share the original
+lock and pending marker. No shared broker resource names are changed here.
+Windows uses the same API with a local byte-range lock and one bounded COM
+transaction; it refuses an existing Word process in the registered session.
+It binds the owned document's `Window.Hwnd` to the unique newborn PID/start time,
+closes its document and requests a typed normal Quit only for its empty instance.
+The child receipt records `QUIT_REQUESTED`; after that PowerShell host exits, a
+separate read-only process observer must confirm disappearance before the parent
+can record native closure. See [Windows worker evidence](windows-word-pdf.md). `--native-only` retains a closed frozen PDF for
+external offline QA and reports `NATIVE_CLOSED_AWAITING_QA`, never full PASS.
 
 After explicitly resolving the owned operation and verifying Word has no open
 documents (or is not running), acknowledge it with:
