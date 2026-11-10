@@ -43,6 +43,15 @@ def _clear_word_pending_locked():
     if not target.exists():
         return None
     import subprocess
+    if os.name == 'nt':
+        probe = subprocess.run(['powershell', '-NoProfile', '-Command',
+                                "@(Get-Process WINWORD -ErrorAction SilentlyContinue).Count"],
+                               capture_output=True, text=True, timeout=10)
+        if probe.returncode or probe.stdout.strip() != '0':
+            raise RuntimeError('WORD_RECOVERY_REQUIRED: Windows Word process still present or unknown')
+        state = json.loads(target.read_text())
+        target.unlink()
+        return state
     if subprocess.run(["/usr/bin/pgrep", "-x", "Microsoft Word"],
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
         probe = subprocess.run(
@@ -59,7 +68,20 @@ def _clear_word_pending_locked():
 
 @contextmanager
 def word_lock(owner: str, timeout: float = 60, path: Path | None = None, *, _allow_pending=False):
-    import fcntl
+    if os.name == 'nt':
+        import msvcrt
+        def acquire(handle):
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        def release(handle):
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        import fcntl
+        def acquire(handle):
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        def release(handle):
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
     if isinstance(timeout, bool) or timeout <= 0:
         raise ValueError("Word lock timeout must be positive")
     path = path or Path.home() / ".cache/wordrev/word-automation.lock"
@@ -74,12 +96,14 @@ def word_lock(owner: str, timeout: float = 60, path: Path | None = None, *, _all
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a+") as handle:
+        if os.name == 'nt' and path.stat().st_size == 0:
+            handle.write(' '); handle.flush()
         deadline = time.monotonic() + timeout
         while True:
             try:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                acquire(handle)
                 break
-            except BlockingIOError:
+            except (BlockingIOError, PermissionError):
                 if time.monotonic() >= deadline:
                     handle.seek(0)
                     raise TimeoutError(f"Word lock timeout after {timeout}s; owner={handle.read()}; lock={path}")
@@ -95,7 +119,7 @@ def word_lock(owner: str, timeout: float = 60, path: Path | None = None, *, _all
             yield
         finally:
             _HELD.paths = held
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            release(handle)
 
 
 def owned_script(path: Path, operation: str, output: Path | None = None) -> str:
