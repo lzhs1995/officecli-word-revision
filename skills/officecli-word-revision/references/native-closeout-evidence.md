@@ -42,3 +42,57 @@ Inspect the actual command path before calling it offline. `wordrev audit` can q
 - A visual contract for header/footer-only changes cannot require unchanged body pixels after an authorized content correction. Bind the exact allowed text delta to source and final DOCX, compare all actual PDF pages, review every changed page, and prove the remaining content and numerical results are preserved. Never compare a new PDF to itself as evidence that the prior body was retained.
 - Bind the RUC QA's actual source hash to the repaired candidate, in addition to checking job paths and accepted/native output hashes. A self-consistent output chain from the wrong input must fail. After adding this guard, verify existing immutable receipts and content deltas offline instead of replaying an already successful native transaction.
 - A same-hash companion-file reuse map must validate the referenced acceptances, their states and exact file hashes. Keep planned evidence paths distinct from accepted evidence. Preserve old maps and scope strings; derive current report scope from the approved frozen manifest. Imported copy, lock and session dependencies belong in the tool fingerprint set, with late snapshots labeled by their true capture time.
+
+### Zotero Web API receipts and per-item versions
+
+This is a Web API/library rule, not proof of concurrent native Word integration.
+In an observed successful multi-item create response, item A had version 2 and
+item B version 3, while `Last-Modified-Version` was 3. The captured official
+[write documentation](https://www.zotero.org/support/dev/web_api/v3/write_requests)
+describes a shared version for successful objects, so this observed difference
+remains a documentation/response discrepancy with cause unresolved. Preserve the
+raw HTTP response and
+its per-member success/failure map; do not classify a successful create as failed
+solely because those numbers differ.
+
+For a subsequent conditional single-item write, bind the exact item key and its
+own current version (for example, `If-Unmodified-Since-Version: 2` for A and `3`
+for B), rather than copying the multi-create response's library header to both.
+If a local assertion failed after successful creation, keep that original failure,
+reconcile the exact created keys/versions from its receipt, and continue only the
+remaining authorized operations under the original request budget. Do not repeat
+the create POST. Preserve UNKNOWN if the original response cannot settle the write.
+Successful creation or offline tests alone do not establish concurrent update
+correctness, a real 412 conflict response or protection against stale overwrites;
+each requires its own actual response and readback before reporting PASS.
+
+這是 Web API／文獻庫規則，不證明原生 Word 整合可以並行。一次已觀察到的成功
+多項建立回應中，項目 A 的 version 為 2、B 為 3，而 `Last-Modified-Version`
+為 3。官方寫入說明描述成功項目共用版本，因此這次差異應保留為文件與實際回應不一致，
+成因尚未確認；不能宣稱官方從無相等描述或服務端異常已定位。保留原 HTTP 回應及逐項成功／
+失敗結果，不能只因版本數字不同就判定建立失敗。
+
+後續對單一項目的條件寫入，必須綁定該項目的確切 key 及其目前版本，例如 A
+使用 `If-Unmodified-Since-Version: 2`、B 使用 `3`；不能把多項建立回應的
+文獻庫標頭一律套給兩者。成功建立後若本地斷言失敗，保留原失敗紀錄，以原回執
+核實已建立的 key／版本，只接續原請求預算內尚未執行的已授權操作，不重送
+建立 POST。原回應不足以確認寫入時，繼續保留 UNKNOWN。成功建立或離線測試
+不等於並行更新、真實 412 衝突或防止舊版本覆寫已通過；各項必須有實際回應及
+讀回證據後才能報 PASS。
+
+A bounded test in an isolated synthetic library subsequently returned HTTP 204
+for both conditional item updates: A 2→5 and B 3→4. Their client request intervals
+overlapped by 3.076 seconds; this does not measure simultaneous server execution
+or establish a general throughput gain. An A update with stale version 2 returned
+412; the final GET still reported version 5 and the accepted updated title. The
+whole sequence used eight requests and four attempted writes, including the
+rejected stale write, with no create replay or production-library writes. This
+validates that particular Web API conditional-write sequence, not native Word
+plugin concurrency, arbitrary multiwriter loads or every conflict scenario.
+
+後續在隔離的合成測試文獻庫中，兩個條件式項目更新皆實際回傳 HTTP 204：A 由
+2→5、B 由 3→4。客戶端請求區間重疊 3.076 秒，不等於量測到服務端同時執行，
+也不能外推一般吞吐效能。以舊版本 2 再更新 A，實際回傳 412；最後 GET 仍為
+版本 5，且已接受的新標題未被覆寫。全流程累計 8 個請求、4 次寫入嘗試（包含
+被拒的舊版寫入），未重送建立 POST，未寫入生產文獻庫。這只驗證該次 Web API
+條件寫入鏈，不證明原生 Word 插件並行、任意多寫負載或所有衝突情境。

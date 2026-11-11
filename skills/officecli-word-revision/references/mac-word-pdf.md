@@ -103,3 +103,39 @@ Microsoft documents the separate external-file consent requirement for sandboxed
 Office on Mac in [Request access to multiple files](https://learn.microsoft.com/en-us/office/vba/office-mac/grantaccesstomultiplefiles).
 The container workaround above was verified locally; it is not a quoted Microsoft
 recommendation or a claim that changing AppleScript to VBA removes sandboxing.
+
+## Bind an unexecuted benchmark to its actual code
+
+Before running a prepared benchmark, inspect and fingerprint the source paths and
+remote bundle it will actually execute, including imported runtime/worker modules
+and its QA entry. An installed release or a passing test of that release does not
+upgrade a previously frozen benchmark. If that unused plan needs a fix, preserve
+it and create an explicit successor under the original controller and authority.
+Prove the old members have not executed; unknown execution is not an unused member.
+Give the successor distinct attempt/output paths, retain the original locks and
+resource protocol, and bind QA to the successor plan/version explicitly. Preparation
+and negative tests are not completed serial/parallel measurements.
+
+執行尚未開始的基準測試前，核對並固定實際將執行的來源路徑、遠端套件、匯入的
+runtime／worker 模組及 QA 入口。已安裝新版或新版測試通過，不會自動更新舊的
+凍結計畫。需要修正尚未執行的計畫時，保留原件，在原控制器與原授權下建立明確
+後繼；先證明舊成員沒有執行，執行未知不等於未執行。後繼使用獨立嘗試與輸出
+路徑，沿用原鎖及資源協議，QA 顯式綁定後繼計畫與版本。準備或負例測試通過
+不代表已取得串行／並行效能結果。
+
+## Release a closed failure without changing its outcome
+
+Keep business outcome, native closure and logical reservation state separate.
+A failed export or QA result can still have a confirmed closed native phase. Only
+when the original task-bound receipt proves that exact attempt closed, reconcile
+through the original controller's fresh observe/release checks and record the
+release readback. Preserve the failure and do not rerun the export just to return
+the reservation. If closure or dispatch is UNKNOWN, preserve the original pending
+state and attempt budget; a failure code, zero windows or a new empty directory is
+not closure evidence. Do not release a foreign reservation or bypass its checks.
+
+業務結果、原生階段關閉和邏輯資源票據必須分開記錄。匯出或 QA 失敗仍可能已有
+確定關閉的原生階段；僅在原任務綁定回執證明同一次操作已關閉後，才經原控制器
+重新觀察、核准歸還並讀回票據狀態。業務仍為失敗，不為歸還資源而重跑匯出。
+關閉或派送若為 UNKNOWN，保留原 pending、嘗試次數與額度；失敗碼、零視窗或
+新的空目錄都不是關閉證據。不得代歸還他方票據或跳過原檢查。
