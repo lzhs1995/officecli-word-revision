@@ -10,6 +10,19 @@
 
 ![Document workflow](assets/workflow.svg)
 
+## Demo
+
+- [Quick overview (30 seconds)](https://youtu.be/jhrOrnbdLlM)
+- [Walkthrough (3:18)](https://youtu.be/Y5JtJIIkwZU)
+
+Read-only structural checks on synthetic academic DOCX files, including four negative cases and a read-only Word view. This demonstration does not run native revision, native layout or Zotero citation refresh.
+
+Silent, edited videos with burned-in Traditional Chinese and English captions.
+
+以合成學術 DOCX 示範唯讀結構檢查、四個負例與 Word 唯讀畫面；本片未執行原生修訂、原生排版或 Zotero 引用更新。
+
+無聲剪輯版，附繁中／英文燒錄字幕。
+
 ## What it does
 
 | Workflow | Supported scope | Required input |
